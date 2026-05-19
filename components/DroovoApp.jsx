@@ -1,476 +1,329 @@
-'use client';
-
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import {
-  Search,
-  MapPin,
-  Package,
-  Euro,
-  Clock,
-  ShieldCheck,
-  Truck,
-  UserCheck,
-  Star,
   ArrowRight,
-  CheckCircle2,
-  Navigation,
+  BadgeCheck,
+  Bell,
+  Box,
   CalendarDays,
-  Send,
+  Car,
+  ChevronRight,
+  CircleDollarSign,
+  Clock3,
+  CreditCard,
+  MapPin,
+  MessageCircle,
+  PackageCheck,
   Route,
-} from 'lucide-react';
+  ShieldCheck,
+  Sparkles,
+  Star,
+  TrendingUp,
+  UserRound,
+  WalletCards,
+} from "lucide-react";
 
-const initialParcels = [
+const routes = [
   {
-    id: 1,
-    title: 'Petit colis — documents et accessoires',
-    from_city: 'Avignon Centre',
-    to_city: 'Paris 11e',
-    delivery_date: 'Aujourd’hui',
-    weight_kg: 1.2,
-    size_label: 'Petit',
-    distance_match: '98%',
-    droovo_price: 9.2,
-    driver_reward: 6.4,
-    platform_commission: 2.8,
-    reference_carrier: 'Colissimo 2 kg',
-    reference_price: 11.19,
-    pickup_window: '18:00 - 20:00',
-    delivery_window: 'Demain avant 12:00',
+    from: "Avignon",
+    to: "Paris",
+    date: "Aujourd’hui · 17:30",
+    driver: "Sami",
+    rating: 4.9,
+    parcels: 3,
+    payout: 42,
+    status: "Disponible",
   },
   {
-    id: 2,
-    title: 'Colis vêtements — sac souple',
-    from_city: 'Le Pontet',
-    to_city: 'Paris Gare de Lyon',
-    delivery_date: 'Demain',
-    weight_kg: 3,
-    size_label: 'Moyen',
-    distance_match: '91%',
-    droovo_price: 13.9,
-    driver_reward: 9.7,
-    platform_commission: 4.2,
-    reference_carrier: 'Colissimo 5 kg',
-    reference_price: 17.39,
-    pickup_window: '08:00 - 10:00',
-    delivery_window: 'Demain soir',
+    from: "Montpellier",
+    to: "Lyon",
+    date: "Demain · 08:00",
+    driver: "Inès",
+    rating: 4.8,
+    parcels: 2,
+    payout: 31,
+    status: "Rapide",
   },
   {
-    id: 3,
-    title: 'Carton fragile — objet déco',
-    from_city: 'Avignon TGV',
-    to_city: 'Boulogne-Billancourt',
-    delivery_date: 'Vendredi',
-    weight_kg: 2.4,
-    size_label: 'Moyen fragile',
-    distance_match: '87%',
-    droovo_price: 15.5,
-    driver_reward: 10.4,
-    platform_commission: 5.1,
-    reference_carrier: 'Colissimo 5 kg + option service',
-    reference_price: 19.9,
-    pickup_window: 'Flexible',
-    delivery_window: 'Sous 48h',
+    from: "Marseille",
+    to: "Toulouse",
+    date: "Vendredi · 14:15",
+    driver: "Nora",
+    rating: 5.0,
+    parcels: 1,
+    payout: 24,
+    status: "Premium",
   },
 ];
 
-function Card({ children, className = '' }) {
-  return <div className={`rounded-3xl bg-white shadow-sm ${className}`}>{children}</div>;
-}
+const pricingRows = [
+  { label: "Prix client estimé", value: "18,90 €", detail: "Colis 2 kg · Avignon → Paris" },
+  { label: "Gain livreur", value: "14,90 €", detail: "Versement après livraison validée" },
+  { label: "Commission Droovo", value: "4,00 €", detail: "20 % de la transaction" },
+];
 
-function Button({ children, variant = 'primary', className = '', ...props }) {
-  const styles =
-    variant === 'primary'
-      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-      : 'border border-slate-300 bg-white text-slate-950 hover:bg-slate-50';
+const activity = [
+  { icon: Box, title: "Colis publié", text: "MacBook · Avignon → Paris", time: "Il y a 3 min" },
+  { icon: Car, title: "Trajet proposé", text: "Départ demain à 08:00", time: "Il y a 12 min" },
+  { icon: CreditCard, title: "Paiement sécurisé", text: "Transaction en attente de validation", time: "Il y a 28 min" },
+];
 
+function StatCard({ icon: Icon, label, value, trend }) {
   return (
-    <button
-      className={`inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition ${styles} ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
+    <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="rounded-2xl bg-white/10 p-3">
+          <Icon className="h-5 w-5 text-white" />
+        </div>
+        <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">{trend}</span>
+      </div>
+      <p className="text-sm text-white/55">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-tight text-white">{value}</p>
+    </div>
   );
 }
 
 function Pill({ children }) {
-  return (
-    <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-      {children}
-    </span>
-  );
+  return <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs text-white/70">{children}</span>;
 }
 
-function getReferencePrice(weight) {
-  if (weight <= 1) return 9.59;
-  if (weight <= 2) return 11.19;
-  if (weight <= 5) return 17.39;
-  if (weight <= 10) return 25.29;
-  return 39.59;
-}
-
-function PriceSimulator({ selectedParcel }) {
+function PricingSimulator() {
   const [weight, setWeight] = useState(2);
-  const [urgent, setUrgent] = useState(true);
-  const [fragile, setFragile] = useState(false);
+  const [distance, setDistance] = useState(690);
 
-  const referencePrice = useMemo(() => getReferencePrice(weight), [weight]);
-  const droovoPrice = useMemo(() => {
-    let price = referencePrice * 0.78;
-    if (urgent) price += 1.5;
-    if (fragile) price += 2.2;
-    return Math.round(price * 10) / 10;
-  }, [referencePrice, urgent, fragile]);
-
-  const driverReward = Math.round(droovoPrice * 0.7 * 10) / 10;
-  const platformCommission = Math.round((droovoPrice - driverReward) * 10) / 10;
-  const saving = Math.max(0, Math.round((referencePrice - droovoPrice) * 10) / 10);
-  const monthlyRevenue = Math.round(platformCommission * 100 * 30);
+  const price = useMemo(() => {
+    const base = 5;
+    const kg = weight * 0.8;
+    const km = distance * 0.02;
+    const total = Math.max(8.9, base + kg + km);
+    const commission = total * 0.2;
+    const driver = total - commission;
+    return { total, commission, driver };
+  }, [weight, distance]);
 
   return (
-    <Card className="p-6">
-      <div className="mb-5 flex items-center justify-between">
+    <div className="rounded-[2rem] border border-white/10 bg-neutral-950/80 p-6 shadow-2xl shadow-black/40 backdrop-blur-2xl">
+      <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-emerald-600">Modèle économique Droovo</p>
-          <h3 className="text-xl font-semibold text-slate-950">Prix, gain et commission</h3>
+          <p className="text-xs font-medium uppercase tracking-[0.3em] text-emerald-300">Simulation</p>
+          <h3 className="mt-2 text-xl font-semibold text-white">Prix automatique</h3>
+          <p className="mt-1 text-sm text-white/55">Le client voit le prix, le livreur voit son gain, Droovo garde la commission.</p>
         </div>
-        <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700">
-          <Euro size={24} />
+        <div className="rounded-2xl bg-emerald-400/10 p-3">
+          <CircleDollarSign className="h-6 w-6 text-emerald-300" />
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Poids du colis : {weight} kg</label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={weight}
-            onChange={(e) => setWeight(Number(e.target.value))}
-            className="w-full accent-emerald-600"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => setUrgent(!urgent)} className={`rounded-xl border p-3 text-left text-sm ${urgent ? 'border-emerald-600 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
-            <Clock className="mb-2" size={18} /> Livraison rapide
-          </button>
-          <button onClick={() => setFragile(!fragile)} className={`rounded-xl border p-3 text-left text-sm ${fragile ? 'border-emerald-600 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
-            <ShieldCheck className="mb-2" size={18} /> Colis fragile
-          </button>
-        </div>
-
-        <div className="rounded-2xl bg-slate-950 p-5 text-white">
-          <p className="text-sm text-slate-300">Prix client Droovo estimé</p>
-          <div className="mt-1 flex flex-wrap items-end gap-2">
-            <span className="text-4xl font-bold">{droovoPrice.toFixed(2)} €</span>
-            <span className="mb-1 text-sm text-slate-300">référence colis : {referencePrice.toFixed(2)} €</span>
+          <div className="mb-2 flex justify-between text-sm text-white/70">
+            <span>Poids du colis</span>
+            <span>{weight} kg</span>
           </div>
-          <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-            <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-slate-300">Gain livreur</p>
-              <strong className="text-lg">{driverReward.toFixed(2)} €</strong>
-            </div>
-            <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-slate-300">Commission Droovo</p>
-              <strong className="text-lg">{platformCommission.toFixed(2)} €</strong>
-            </div>
-            <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-slate-300">Économie client</p>
-              <strong className="text-lg">{saving.toFixed(2)} €</strong>
-            </div>
-          </div>
+          <input className="w-full accent-emerald-300" min="1" max="20" type="range" value={weight} onChange={(e) => setWeight(Number(e.target.value))} />
         </div>
-
-        <div className="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-950">
-          <strong>Projection créateur :</strong><br />
-          Avec 100 transactions/jour et une commission moyenne de {platformCommission.toFixed(2)} €, Droovo génère environ <strong>{monthlyRevenue.toLocaleString('fr-FR')} € de CA mensuel</strong> avant frais de paiement, assurance, support et marketing.
-        </div>
-
-        {selectedParcel && (
-          <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-            Colis sélectionné : <strong>{selectedParcel.title}</strong><br />
-            Prix client : <strong>{selectedParcel.droovo_price.toFixed(2)} €</strong> — Gain livreur : <strong>{selectedParcel.driver_reward.toFixed(2)} €</strong> — Commission Droovo : <strong>{selectedParcel.platform_commission.toFixed(2)} €</strong>
+        <div>
+          <div className="mb-2 flex justify-between text-sm text-white/70">
+            <span>Distance estimée</span>
+            <span>{distance} km</span>
           </div>
-        )}
+          <input className="w-full accent-emerald-300" min="20" max="900" step="10" type="range" value={distance} onChange={(e) => setDistance(Number(e.target.value))} />
+        </div>
       </div>
-    </Card>
+
+      <div className="mt-6 grid grid-cols-3 gap-3">
+        <div className="rounded-2xl bg-white/[0.06] p-4">
+          <p className="text-xs text-white/45">Client</p>
+          <p className="mt-1 text-lg font-semibold text-white">{price.total.toFixed(2)} €</p>
+        </div>
+        <div className="rounded-2xl bg-white/[0.06] p-4">
+          <p className="text-xs text-white/45">Livreur</p>
+          <p className="mt-1 text-lg font-semibold text-white">{price.driver.toFixed(2)} €</p>
+        </div>
+        <div className="rounded-2xl bg-emerald-400/10 p-4">
+          <p className="text-xs text-emerald-200/70">Droovo</p>
+          <p className="mt-1 text-lg font-semibold text-emerald-200">{price.commission.toFixed(2)} €</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function CreateParcelForm() {
-  const [weight, setWeight] = useState(2);
-  const referencePrice = getReferencePrice(weight);
-  const droovoPrice = Math.round(referencePrice * 0.82 * 10) / 10;
-  const driverReward = Math.round(droovoPrice * 0.7 * 10) / 10;
-  const commission = Math.round((droovoPrice - driverReward) * 10) / 10;
-
+export default function DroovoPremiumAppPreview() {
   return (
-    <Card className="p-6">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700"><Send size={22} /></div>
-        <div>
-          <p className="text-sm font-medium text-emerald-600">Créer une demande</p>
-          <h3 className="text-xl font-bold">Envoyer un colis</h3>
-        </div>
+    <div className="min-h-screen bg-[#070A0F] text-white">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-32 top-0 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl" />
+        <div className="absolute right-0 top-24 h-[32rem] w-[32rem] rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-fuchsia-500/10 blur-3xl" />
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <input className="rounded-xl border p-3" placeholder="Ville de départ" defaultValue="Avignon" />
-        <input className="rounded-xl border p-3" placeholder="Ville d’arrivée" defaultValue="Paris" />
-        <input className="rounded-xl border p-3" placeholder="Titre du colis" defaultValue="Petit colis" />
-        <input className="rounded-xl border p-3" type="date" />
-      </div>
-      <div className="mt-4">
-        <label className="mb-2 block text-sm font-medium">Poids : {weight} kg</label>
-        <input type="range" min="1" max="10" value={weight} onChange={(e) => setWeight(Number(e.target.value))} className="w-full accent-emerald-600" />
-      </div>
-      <div className="mt-5 rounded-2xl bg-slate-950 p-4 text-white">
-        <div className="grid gap-3 md:grid-cols-3">
-          <div><p className="text-xs text-slate-300">Prix Droovo</p><strong>{droovoPrice.toFixed(2)} €</strong></div>
-          <div><p className="text-xs text-slate-300">Gain livreur</p><strong>{driverReward.toFixed(2)} €</strong></div>
-          <div><p className="text-xs text-slate-300">Commission</p><strong>{commission.toFixed(2)} €</strong></div>
-        </div>
-      </div>
-      <Button className="mt-5 w-full">Publier la demande</Button>
-    </Card>
-  );
-}
 
-function CreateTripForm() {
-  return (
-    <Card className="p-6">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700"><Route size={22} /></div>
-        <div>
-          <p className="text-sm font-medium text-emerald-600">Livreur Droovo</p>
-          <h3 className="text-xl font-bold">Déclarer un trajet</h3>
-        </div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <input className="rounded-xl border p-3" placeholder="Départ" defaultValue="Avignon" />
-        <input className="rounded-xl border p-3" placeholder="Arrivée" defaultValue="Paris" />
-        <input className="rounded-xl border p-3" type="date" />
-        <select className="rounded-xl border p-3" defaultValue="Moyen">
-          <option>Petit</option>
-          <option>Moyen</option>
-          <option>Grand</option>
-        </select>
-      </div>
-      <Button className="mt-5 w-full">Trouver des colis compatibles</Button>
-    </Card>
-  );
-}
-
-export default function DroovoApp() {
-  const [selectedParcel, setSelectedParcel] = useState(initialParcels[0]);
-  const [mode, setMode] = useState('driver');
-
-  return (
-    <div className="min-h-screen bg-[#F7F9FC] text-slate-950">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md">
-              <Truck size={24} />
-            </div>
-            <div>
-              <div className="text-2xl font-black tracking-tight">Droovo</div>
-              <div className="text-xs text-slate-500">Livraison collaborative entre particuliers</div>
-            </div>
+      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-black shadow-lg shadow-emerald-500/10">
+            <Route className="h-6 w-6" />
           </div>
-          <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
-            <a href="#trajet">Trouver un colis</a>
-            <a href="#comparatif">Comparatif</a>
-            <a href="#demo">Démo</a>
-          </nav>
-          <Button className="bg-slate-950 hover:bg-slate-800">Créer un compte</Button>
+          <div>
+            <p className="text-lg font-semibold tracking-tight">Droovo</p>
+            <p className="text-xs text-white/45">Livraison entre particuliers</p>
+          </div>
         </div>
+        <nav className="hidden items-center gap-7 text-sm text-white/60 md:flex">
+          <a>Publier un colis</a>
+          <a>Proposer un trajet</a>
+          <a>Tarifs</a>
+          <a>Sécurité</a>
+        </nav>
+        <button className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-emerald-200">Se connecter</button>
       </header>
 
-      <main>
-        <section className="relative overflow-hidden bg-white">
-          <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-emerald-100 blur-3xl" />
-          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-[1.05fr_0.95fr] md:py-20">
-            <div>
-              <Pill>Avignon → Paris • livraison plus rapide • prix réduit</Pill>
-              <h1 className="mt-6 max-w-3xl text-5xl font-black leading-tight tracking-tight md:text-6xl">
-                Transporte un colis sur ton trajet et gagne de l’argent.
-              </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-                Droovo met en relation une personne qui doit envoyer un colis avec une personne qui fait déjà le même trajet. Le client paie moins cher, le colis arrive plus vite, et le transporteur rentabilise son déplacement.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Button>Je déclare mon trajet <ArrowRight className="ml-2" size={18} /></Button>
-                <Button variant="secondary">Envoyer un colis</Button>
-              </div>
-              <div className="mt-9 grid max-w-xl grid-cols-3 gap-4">
-                <div><div className="text-2xl font-black">-15 à -30%</div><p className="text-sm text-slate-500">vs prix colis classique</p></div>
-                <div><div className="text-2xl font-black">24/48h</div><p className="text-sm text-slate-500">livraison moyenne</p></div>
-                <div><div className="text-2xl font-black">70%</div><p className="text-sm text-slate-500">du prix au livreur</p></div>
-              </div>
+      <main className="relative z-10">
+        <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-16 pt-10 lg:grid-cols-[1.05fr_0.95fr] lg:pt-20">
+          <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-white/70 backdrop-blur-xl">
+              <Sparkles className="h-4 w-4 text-emerald-300" />
+              Rentabilisez vos trajets. Livrez plus vite qu’un transporteur classique.
             </div>
+            <h1 className="max-w-4xl text-5xl font-semibold tracking-[-0.06em] text-white md:text-7xl">
+              Envoyer un colis devient aussi simple qu’un trajet partagé.
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-white/60">
+              Droovo connecte les personnes qui ont un colis à envoyer avec des voyageurs déjà en route. Prix calculé automatiquement, paiement sécurisé, suivi clair et commission intégrée.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <button className="group rounded-full bg-emerald-300 px-6 py-4 text-sm font-semibold text-black shadow-2xl shadow-emerald-500/20">
+                Publier un colis
+                <ArrowRight className="ml-2 inline h-4 w-4 transition group-hover:translate-x-1" />
+              </button>
+              <button className="rounded-full border border-white/10 bg-white/[0.06] px-6 py-4 text-sm font-semibold text-white backdrop-blur-xl">
+                Proposer mon trajet
+              </button>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-2">
+              <Pill>Paiement sécurisé</Pill>
+              <Pill>Commission automatique</Pill>
+              <Pill>Matching colis/trajets</Pill>
+              <Pill>Dashboard admin</Pill>
+            </div>
+          </motion.div>
 
-            <Card className="relative bg-slate-950 p-6 text-white shadow-2xl md:p-8">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-emerald-300">Trajet déclaré</p>
-                  <h2 className="text-2xl font-bold">Avignon → Paris</h2>
-                </div>
-                <div className="rounded-2xl bg-white/10 p-3"><Navigation size={24} /></div>
-              </div>
-              <div className="rounded-2xl bg-white p-4 text-slate-950">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Départ</p><p className="font-semibold">Avignon</p></div>
-                  <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Arrivée</p><p className="font-semibold">Paris</p></div>
-                  <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Date</p><p className="font-semibold">Aujourd’hui</p></div>
-                  <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Place disponible</p><p className="font-semibold">Petit / moyen colis</p></div>
-                </div>
-              </div>
-              <div className="mt-6 space-y-3">
-                {initialParcels.slice(0, 2).map((parcel) => (
-                  <div key={parcel.id} className="flex items-center justify-between rounded-2xl bg-white/10 p-4">
-                    <div>
-                      <p className="font-semibold">{parcel.from_city} → {parcel.to_city}</p>
-                      <p className="text-sm text-slate-300">{parcel.weight_kg} kg • match {parcel.distance_match}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-emerald-300">+{parcel.driver_reward.toFixed(2)} €</p>
-                      <p className="text-xs text-slate-400">gain livreur</p>
-                    </div>
+          <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.1 }} className="relative">
+            <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-emerald-400/20 to-blue-500/10 blur-2xl" />
+            <div className="relative rounded-[2.25rem] border border-white/10 bg-white/[0.06] p-4 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+              <div className="rounded-[1.75rem] bg-[#0A0F16] p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.25em] text-white/35">Dashboard</p>
+                    <h2 className="mt-1 text-2xl font-semibold">Pilotage Droovo</h2>
                   </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-        </section>
-
-        <section id="demo" className="mx-auto grid max-w-7xl gap-6 px-4 py-12 lg:grid-cols-2">
-          <CreateTripForm />
-          <CreateParcelForm />
-        </section>
-
-        <section id="trajet" className="mx-auto max-w-7xl px-4 py-12">
-          <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div>
-              <p className="text-sm font-semibold text-emerald-600">Matching trajet / colis</p>
-              <h2 className="text-3xl font-black tracking-tight">Colis disponibles sur ton itinéraire</h2>
-              <p className="mt-2 max-w-2xl text-slate-600">Exemple : tu pars d’Avignon vers Paris. Droovo propose les colis compatibles avec ton trajet, ton horaire et ton volume disponible.</p>
-            </div>
-            <div className="flex rounded-full bg-white p-1 shadow-sm">
-              <button onClick={() => setMode('driver')} className={`rounded-full px-5 py-2 text-sm font-medium ${mode === 'driver' ? 'bg-slate-950 text-white' : 'text-slate-600'}`}>Je transporte</button>
-              <button onClick={() => setMode('sender')} className={`rounded-full px-5 py-2 text-sm font-medium ${mode === 'sender' ? 'bg-slate-950 text-white' : 'text-slate-600'}`}>J’envoie</button>
-            </div>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-4">
-              {initialParcels.map((parcel) => (
-                <Card key={parcel.id} className={`cursor-pointer p-5 transition hover:-translate-y-1 hover:shadow-lg ${selectedParcel.id === parcel.id ? 'ring-2 ring-emerald-600' : ''}`}>
-                  <button className="w-full text-left" onClick={() => setSelectedParcel(parcel)}>
-                    <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-                      <div className="flex gap-4">
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><Package size={26} /></div>
-                        <div>
-                          <h3 className="text-lg font-bold">{parcel.title}</h3>
-                          <div className="mt-2 flex flex-wrap gap-2 text-sm text-slate-600">
-                            <span className="inline-flex items-center gap-1"><MapPin size={15} /> {parcel.from_city} → {parcel.to_city}</span>
-                            <span className="inline-flex items-center gap-1"><CalendarDays size={15} /> {parcel.delivery_date}</span>
-                            <span>{parcel.weight_kg} kg</span>
-                            <span>{parcel.size_label}</span>
+                  <button className="rounded-full bg-white/10 p-3"><Bell className="h-5 w-5" /></button>
+                </div>
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <StatCard icon={UserRound} label="Utilisateurs" value="1 284" trend="+18%" />
+                  <StatCard icon={PackageCheck} label="Colis actifs" value="342" trend="+11%" />
+                  <StatCard icon={WalletCards} label="CA brut" value="8 740 €" trend="+24%" />
+                  <StatCard icon={TrendingUp} label="Commission" value="1 748 €" trend="20%" />
+                </div>
+                <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="font-medium">Trajets disponibles</p>
+                    <span className="text-xs text-emerald-300">Live</span>
+                  </div>
+                  <div className="space-y-3">
+                    {routes.map((route) => (
+                      <div key={`${route.from}-${route.to}`} className="rounded-2xl bg-white/[0.06] p-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 text-sm font-semibold">
+                              <span>{route.from}</span><ChevronRight className="h-4 w-4 text-white/35" /><span>{route.to}</span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/45">
+                              <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{route.date}</span>
+                              <span className="flex items-center gap-1"><Star className="h-3 w-3" />{route.rating}</span>
+                              <span>{route.parcels} colis</span>
+                            </div>
                           </div>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <Pill>Match trajet {parcel.distance_match}</Pill>
-                            <Pill>Retrait {parcel.pickup_window}</Pill>
-                            <Pill>Livraison {parcel.delivery_window}</Pill>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-emerald-300">+{route.payout} €</p>
+                            <p className="mt-1 text-xs text-white/45">{route.status}</p>
                           </div>
                         </div>
                       </div>
-                      <div className="min-w-36 text-left md:text-right">
-                        <p className="text-sm text-slate-500">Gain livreur</p>
-                        <p className="text-3xl font-black text-emerald-600">+{parcel.driver_reward.toFixed(2)} €</p>
-                        <p className="text-xs text-slate-400">Prix client {parcel.droovo_price.toFixed(2)} €</p>
-                        <p className="text-xs text-slate-400">Réf. {parcel.reference_carrier} : {parcel.reference_price.toFixed(2)} €</p>
-                        <p className="text-xs text-emerald-600">Commission Droovo : {parcel.platform_commission.toFixed(2)} €</p>
-                      </div>
-                    </div>
-                  </button>
-                </Card>
-              ))}
-            </div>
-            <PriceSimulator selectedParcel={selectedParcel} />
-          </div>
-        </section>
-
-        <section id="comparatif" className="bg-white py-14">
-          <div className="mx-auto max-w-7xl px-4">
-            <div className="mb-10 max-w-3xl">
-              <p className="text-sm font-semibold text-emerald-600">Pourquoi Droovo ?</p>
-              <h2 className="text-3xl font-black tracking-tight">Plus rapide, moins cher et plus rentable</h2>
-              <p className="mt-3 text-slate-600">Droovo exploite les trajets déjà effectués par des particuliers pour réduire les coûts et accélérer certaines livraisons.</p>
-            </div>
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <div className="grid grid-cols-4 border-b bg-slate-950 text-sm font-semibold text-white">
-                <div className="p-5">Critères</div><div className="p-5">Droovo</div><div className="p-5">La Poste / Colissimo</div><div className="p-5">Transport express</div>
+                    ))}
+                  </div>
+                </div>
               </div>
+            </div>
+          </motion.div>
+        </section>
+
+        <section className="mx-auto grid max-w-7xl gap-6 px-6 py-10 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <PricingSimulator />
+          </div>
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-blue-300">Sécurité</p>
+            <h3 className="mt-2 text-xl font-semibold">Workflow de livraison</h3>
+            <div className="mt-6 space-y-4">
               {[
-                ['Prix moyen Avignon → Paris (2-3kg)', '9 à 15 €', '11 à 20 €', '25 à 60 €'],
-                ['Délai moyen', '24h à 48h', '48h à 72h', '24h'],
-                ['Livraison flexible', 'Oui', 'Limitée', 'Oui'],
-                ['Rentabilisation trajet particulier', 'Oui', 'Non', 'Non'],
-                ['Impact écologique', 'Trajet déjà prévu', 'Transport dédié', 'Transport dédié'],
-              ].map((row) => (
-                <div key={row[0]} className="grid grid-cols-4 border-b text-sm last:border-0">
-                  <div className="bg-slate-50 p-5 font-semibold text-slate-800">{row[0]}</div>
-                  <div className="p-5 font-medium text-emerald-700">{row[1]}</div>
-                  <div className="p-5 text-slate-600">{row[2]}</div>
-                  <div className="p-5 text-slate-600">{row[3]}</div>
+                [MapPin, "Adresse validée", "Départ et arrivée confirmés avant paiement."],
+                [ShieldCheck, "Paiement bloqué", "Le livreur est payé après validation de réception."],
+                [MessageCircle, "Chat intégré", "Expéditeur et livreur peuvent échanger dans l’app."],
+                [BadgeCheck, "Avis vérifiés", "Notes après livraison pour sécuriser la communauté."],
+              ].map(([Icon, title, text]) => (
+                <div className="flex gap-4" key={title}>
+                  <div className="h-10 w-10 shrink-0 rounded-2xl bg-white/10 p-2.5"><Icon className="h-5 w-5 text-white" /></div>
+                  <div>
+                    <p className="font-medium">{title}</p>
+                    <p className="mt-1 text-sm leading-6 text-white/50">{text}</p>
+                  </div>
                 </div>
               ))}
-            </div>
-            <div className="mt-12 grid gap-6 lg:grid-cols-2">
-              <Card className="bg-emerald-600 p-8 text-white shadow-xl">
-                <p className="text-sm font-semibold text-emerald-100">Intérêt client expéditeur</p>
-                <h3 className="mt-2 text-3xl font-black">Envoyer un colis moins cher et plus rapidement</h3>
-                <div className="mt-7 space-y-4">
-                  {['Prix inférieur aux solutions classiques', 'Livraison parfois le jour même ou le lendemain', 'Suivi temps réel du transporteur', 'Remise en main propre possible'].map((item) => (
-                    <div key={item} className="flex items-start gap-3 rounded-xl bg-white/10 p-4"><CheckCircle2 className="mt-0.5 shrink-0" size={20} /><span>{item}</span></div>
-                  ))}
-                </div>
-              </Card>
-              <Card className="bg-slate-950 p-8 text-white shadow-xl">
-                <p className="text-sm font-semibold text-emerald-300">Intérêt livreur Droovo</p>
-                <h3 className="mt-2 text-3xl font-black">Rentabiliser ses trajets quotidiens</h3>
-                <div className="mt-6 rounded-2xl bg-white/10 p-5">
-                  <p className="text-sm text-slate-300">Exemple concret</p>
-                  <div className="mt-3 text-4xl font-black text-emerald-300">+ 180 à 450 €/mois</div>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">Un particulier qui effectue régulièrement des trajets peut transporter plusieurs colis par semaine et générer un complément de revenu sans modifier son trajet principal.</p>
-                </div>
-              </Card>
             </div>
           </div>
         </section>
 
-        <section className="mx-auto grid max-w-7xl gap-6 px-4 py-14 lg:grid-cols-3">
-          <Card className="p-7 lg:col-span-2">
-            <p className="text-sm font-semibold text-emerald-600">Sécurité et confiance</p>
-            <h2 className="mt-2 text-3xl font-black">Un modèle qui rassure les deux côtés</h2>
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {['Vérification d’identité', 'Paiement bloqué jusqu’à confirmation', 'Code de remise au retrait et à la livraison', 'Photos du colis avant départ et à l’arrivée', 'Assurance selon valeur déclarée', 'Notation réciproque'].map((item) => (
-                <div key={item} className="flex gap-3 rounded-xl bg-slate-50 p-4 text-sm text-slate-700"><CheckCircle2 className="shrink-0 text-emerald-600" size={20} /> {item}</div>
+        <section className="mx-auto grid max-w-7xl gap-6 px-6 py-10 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 backdrop-blur-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.3em] text-fuchsia-300">Activité</p>
+                <h3 className="mt-2 text-xl font-semibold">Temps réel</h3>
+              </div>
+              <Clock3 className="h-6 w-6 text-white/40" />
+            </div>
+            <div className="mt-6 space-y-3">
+              {activity.map((item) => (
+                <div key={item.title} className="flex items-center gap-4 rounded-2xl bg-white/[0.05] p-4">
+                  <div className="rounded-2xl bg-white/10 p-3"><item.icon className="h-5 w-5" /></div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{item.title}</p>
+                    <p className="truncate text-sm text-white/45">{item.text}</p>
+                  </div>
+                  <p className="text-xs text-white/35">{item.time}</p>
+                </div>
               ))}
             </div>
-          </Card>
-          <Card className="bg-slate-950 p-7 text-white">
-            <UserCheck className="mb-5 text-emerald-300" size={32} />
-            <h3 className="text-2xl font-bold">Profil livreur</h3>
-            <div className="mt-5 rounded-2xl bg-white/10 p-4">
-              <p className="font-semibold">Julie M.</p>
-              <p className="mt-1 text-sm text-slate-300">Trajet régulier : Avignon → Paris</p>
-              <div className="mt-3 flex items-center gap-1 text-emerald-300"><Star size={18} fill="currentColor" /> 4.9 / 5</div>
+          </div>
+
+          <div className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-8 shadow-2xl shadow-black/30 backdrop-blur-xl">
+            <div className="max-w-2xl">
+              <p className="text-xs font-medium uppercase tracking-[0.3em] text-emerald-300">MVP exploitable</p>
+              <h3 className="mt-3 text-3xl font-semibold tracking-tight">La prochaine version doit transformer Droovo en vrai tunnel de conversion.</h3>
+              <p className="mt-4 text-white/55 leading-7">
+                L’objectif n’est plus d’avoir une simple maquette. Il faut une app claire : un utilisateur publie un colis, obtient un prix, paie, est matché avec un livreur et suit la livraison.
+              </p>
             </div>
-            <Button className="mt-6 w-full">Valider ce transport</Button>
-          </Card>
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {pricingRows.map((row) => (
+                <div key={row.label} className="rounded-2xl bg-black/25 p-4">
+                  <p className="text-sm text-white/45">{row.label}</p>
+                  <p className="mt-2 text-2xl font-semibold">{row.value}</p>
+                  <p className="mt-2 text-xs leading-5 text-white/40">{row.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
       </main>
     </div>
