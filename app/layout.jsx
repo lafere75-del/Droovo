@@ -1,8 +1,8 @@
-import './globals.css';
+import "./globals.css";
 
 export const metadata = {
-  title: 'Droovo - Livraison collaborative',
-  description: 'Droovo met en relation expéditeurs et particuliers qui effectuent déjà le bon trajet.',
+  title: "Droovo",
+  description: "Livraison collaborative entre particuliers",
 };
 
 export default function RootLayout({ children }) {
