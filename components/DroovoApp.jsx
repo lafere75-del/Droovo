@@ -134,12 +134,18 @@ export default function DroovoApp() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <button className="rounded-full bg-emerald-600 px-7 py-4 text-sm font-black text-white shadow-xl shadow-emerald-600/25 transition hover:bg-emerald-700">
-                Déclarer mon trajet <ArrowRight className="ml-2 inline" size={16} />
-              </button>
-              <button className="rounded-full border border-emerald-200 bg-white px-7 py-4 text-sm font-black text-slate-950 shadow-sm transition hover:border-emerald-600 hover:text-emerald-700">
-                Envoyer un colis
-              </button>
+              <a
+  href="#declarer-trajet"
+  className="rounded-full bg-emerald-600 px-7 py-4 text-sm font-black text-white shadow-xl shadow-emerald-600/25 transition hover:bg-emerald-700"
+>
+  Déclarer mon trajet <ArrowRight className="ml-2 inline" size={16} />
+</a>
+              <a
+  href="#envoyer-colis"
+  className="rounded-full border border-emerald-200 bg-white px-7 py-4 text-sm font-black text-slate-950 shadow-sm transition hover:border-emerald-600 hover:text-emerald-700"
+>
+  Envoyer un colis
+</a>
             </div>
 
             <div className="mt-10 grid max-w-2xl grid-cols-3 gap-3">
