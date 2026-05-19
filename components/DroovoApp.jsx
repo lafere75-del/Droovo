@@ -319,8 +319,45 @@ export default function DroovoApp() {
             </div>
           </div>
         </div>
+           </section>
+
+      <section id="connexion" className="mx-auto max-w-3xl px-6 py-24">
+        <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+            Connexion
+          </p>
+
+          <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+            Accéder à son compte Droovo
+          </h2>
+
+          <p className="mt-4 text-slate-600">
+            Connectez-vous pour publier un trajet, accepter un colis ou suivre vos livraisons.
+          </p>
+
+          <div className="mt-8 grid gap-4">
+            <input
+              type="email"
+              placeholder="Adresse e-mail"
+              className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+            />
+
+            <input
+              type="password"
+              placeholder="Mot de passe"
+              className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+            />
+
+            <button className="rounded-2xl bg-emerald-600 px-5 py-4 font-black text-white hover:bg-emerald-700">
+              Se connecter
+            </button>
+          </div>
+        </div>
       </section>
+
     </main>
+  );
+}
   );
 }
 
