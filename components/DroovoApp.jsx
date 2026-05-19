@@ -356,8 +356,7 @@ export default function DroovoApp() {
       </section>
 
     </main>
-  );
-}
+ 
   );
 }
 
