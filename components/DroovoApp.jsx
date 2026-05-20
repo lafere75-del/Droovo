@@ -122,7 +122,7 @@ export default function DroovoApp() {
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-800 ring-1 ring-emerald-200">
-              <Route size={16} /> Avignon → Paris · Trajet exemple
+              <Route size={16} /> Marseille → Paris · Trajet exemple
             </div>
 
             <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[1.02] tracking-[-0.055em] text-slate-950 md:text-7xl">
@@ -159,7 +159,7 @@ export default function DroovoApp() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-black text-emerald-300">Trajet déclaré</p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight">Avignon → Paris</h2>
+                <h2 className="mt-2 text-3xl font-black tracking-tight">Marseille → Paris</h2>
                 <p className="mt-2 text-sm text-white/50">Conducteur vérifié · Départ aujourd’hui 17:30</p>
               </div>
               <div className="rounded-2xl bg-emerald-400/15 p-3 text-emerald-300">
@@ -169,7 +169,7 @@ export default function DroovoApp() {
 
             <div className="mt-7 rounded-3xl bg-white p-5 text-slate-950">
               <div className="space-y-4">
-                <RouteLine icon={MapPin} title="Départ" value="Avignon Centre" />
+                <RouteLine icon={MapPin} title="Départ" value="Marseille Centre" />
                 <RouteLine icon={MapPin} title="Arrivée" value="Paris 11e" />
                 <RouteLine icon={Box} title="Volume disponible" value="Petit / moyen colis" />
                 <RouteLine icon={Clock3} title="Livraison estimée" value="24h" />
