@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
+const ADMIN_EMAILS = ["droovo@mosolar.fr"];
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -14,8 +16,10 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: cleanEmail,
       password,
     });
 
@@ -26,8 +30,11 @@ export default function LoginPage() {
       return;
     }
 
-    alert("Connexion réussie.");
-    router.push("/dashboard");
+    if (ADMIN_EMAILS.includes(cleanEmail)) {
+      router.push("/admin");
+    } else {
+      router.push("/dashboard");
+    }
   }
 
   return (
