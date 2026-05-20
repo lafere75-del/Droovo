@@ -44,7 +44,7 @@ const parcels = [
   },
   {
     title: "Petit matériel pro",
-    from: "Avignon TGV",
+    from: "Marseille TGV",
     to: "Paris Bercy",
     weight: "4,5 kg",
     droovoPrice: "16,80 €",
