@@ -106,12 +106,21 @@ export default function DroovoApp() {
             <a href="#securite" className="hover:text-emerald-700">Sécurité</a>
           </nav>
 
-          <a
-href="/login"
-            className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
->
-  Se connecter
-</a>
+          <div className="flex items-center gap-3">
+  <a
+    href="/login"
+    className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:border-emerald-600 hover:text-emerald-700"
+  >
+    Se connecter
+  </a>
+
+  <a
+    href="/signup"
+    className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
+  >
+    Créer un compte
+  </a>
+</div>
         </div>
       </header>
 
