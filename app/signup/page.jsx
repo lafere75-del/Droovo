@@ -50,15 +50,20 @@ alert("Compte créé avec l'ID : " + data.user.id);
 
     const userId = data.user?.id;
 
-    if (userId) {
-      await supabase.from("profiles").insert({
-        id: userId,
-        fullname,
-        email,
-        role: "user",
-        identity_status: "pending",
-      });
-    }
+if (userId) {
+  const { error: profileError } = await supabase.from("profiles").insert({
+    id: userId,
+    fullname,
+    email,
+    role: "user",
+    identity_status: "pending",
+  });
+
+  if (profileError) {
+    alert("Compte créé, mais profil non enregistré : " + profileError.message);
+    return;
+  }
+}
 
     alert("Compte créé. Vérifiez votre e-mail si Supabase demande une confirmation.");
     router.push("/dashboard");
