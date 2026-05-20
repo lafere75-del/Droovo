@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -9,20 +10,42 @@ export default function SignupPage() {
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSignup(e) {
+  async function handleSignup(e) {
     e.preventDefault();
+    setLoading(true);
 
     if (!fullname || !email || !password) {
-      alert("Veuillez remplir tous les champs avant de créer votre compte.");
+      alert("Veuillez remplir tous les champs.");
+      setLoading(false);
       return;
     }
 
-    if (password.length < 6) {
-      alert("Le mot de passe doit contenir au moins 6 caractères.");
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      alert(error.message);
+      setLoading(false);
       return;
     }
 
+    const userId = data.user?.id;
+
+    if (userId) {
+      await supabase.from("profiles").insert({
+        id: userId,
+        fullname,
+        email,
+        role: "user",
+        identity_status: "pending",
+      });
+    }
+
+    alert("Compte créé. Vérifiez votre e-mail si Supabase demande une confirmation.");
     router.push("/dashboard");
   }
 
@@ -71,9 +94,10 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            className="rounded-2xl bg-emerald-600 px-5 py-4 font-black text-white hover:bg-emerald-700"
+            disabled={loading}
+            className="rounded-2xl bg-emerald-600 px-5 py-4 font-black text-white hover:bg-emerald-700 disabled:opacity-60"
           >
-            Créer mon compte
+            {loading ? "Création en cours..." : "Créer mon compte"}
           </button>
         </form>
 
