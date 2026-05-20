@@ -16,7 +16,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -26,25 +26,13 @@ export default function LoginPage() {
         return;
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const userId = data.user?.id;
 
-      if (!user) {
-        alert("Connexion impossible : utilisateur introuvable.");
-        return;
-      }
-
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError) {
-        alert("Profil introuvable : " + profileError.message);
-        return;
-      }
+        .eq("id", userId)
+        .maybeSingle();
 
       if (profile?.role === "admin") {
         router.push("/admin");
