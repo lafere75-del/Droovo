@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
+const ADMIN_EMAILS = ["droovo@mosolar.fr"];
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -15,32 +17,27 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) {
-        alert("Erreur connexion : " + error.message);
-        return;
-      }
+    setLoading(false);
 
-      const userId = data.user?.id;
+    if (error) {
+      alert("Erreur connexion : " + error.message);
+      return;
+    }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userId)
-        .maybeSingle();
+    if (!data.user) {
+      alert("Utilisateur introuvable.");
+      return;
+    }
 
-      if (profile?.role === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/dashboard");
-      }
-    } finally {
-      setLoading(false);
+    if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+      router.push("/admin");
+    } else {
+      router.push("/dashboard");
     }
   }
 
@@ -54,10 +51,6 @@ export default function LoginPage() {
         <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
           Se connecter
         </h1>
-
-        <p className="mt-3 text-slate-600">
-          Connectez-vous pour accéder à votre espace Droovo.
-        </p>
 
         <form onSubmit={handleLogin} className="mt-8 grid gap-4">
           <input
@@ -86,13 +79,6 @@ export default function LoginPage() {
             {loading ? "Connexion..." : "Se connecter"}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Pas encore de compte ?
-          <a href="/signup" className="ml-1 font-black text-emerald-700">
-            Créer un compte
-          </a>
-        </p>
       </div>
     </main>
   );
