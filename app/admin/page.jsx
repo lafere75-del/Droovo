@@ -18,22 +18,22 @@ import {
 export default async function AdminPage({ searchParams }) {
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  data: { user },
+} = await supabase.auth.getUser();
 
-  if (!session) {
-    redirect("/login");
-  }
+if (!user) {
+  redirect("/login");
+}
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", session.user.id)
-    .single();
+const { data: profile } = await supabase
+  .from("profiles")
+  .select("role")
+  .eq("id", user.id)
+  .single();
 
-  if (!profile || profile.role !== "admin") {
-    redirect("/dashboard");
-  }
+if (!profile || profile.role !== "admin") {
+  redirect("/dashboard");
+}
 
   const status = searchParams?.status || "all";
   const q = searchParams?.q || "";
