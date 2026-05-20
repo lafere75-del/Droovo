@@ -26,7 +26,31 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert("Connexion impossible : utilisateur introuvable.");
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) {
+        alert("Profil introuvable : " + profileError.message);
+        return;
+      }
+
+      if (profile?.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
     } finally {
       setLoading(false);
     }
