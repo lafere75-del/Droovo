@@ -33,7 +33,7 @@ const parcels = [
   },
   {
     title: "Colis vêtements",
-    from: "Le Pontet",
+    from: "Bordeaux",
     to: "Paris Gare de Lyon",
     weight: "3 kg",
     droovoPrice: "13,90 €",
