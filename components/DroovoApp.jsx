@@ -14,7 +14,6 @@ import {
   Package,
   Route,
   ShieldCheck,
-  Star,
   Truck,
   Users,
 } from "lucide-react";
@@ -24,11 +23,11 @@ const parcels = [
     title: "Petit colis — documents",
     from: "Marseille Centre",
     to: "Paris 11e",
-    weight: "1,2 kg",
-    droovoPrice: "9,20 €",
-    postePrice: "11,19 €",
-    driverGain: "6,40 €",
-    commission: "2,80 €",
+    weight: "1 kg",
+    droovoPrice: "7,20 €",
+    postePrice: "9,59 €",
+    driverGain: "5,62 €",
+    commission: "1,58 €",
     delay: "24h",
   },
   {
@@ -36,31 +35,31 @@ const parcels = [
     from: "Bordeaux",
     to: "Paris Gare de Lyon",
     weight: "3 kg",
-    droovoPrice: "13,90 €",
+    droovoPrice: "12,90 €",
     postePrice: "17,39 €",
-    driverGain: "9,70 €",
-    commission: "4,20 €",
+    driverGain: "10,06 €",
+    commission: "2,84 €",
     delay: "24h - 48h",
   },
   {
     title: "Petit matériel pro",
     from: "Marseille TGV",
     to: "Paris Bercy",
-    weight: "4,5 kg",
-    droovoPrice: "16,80 €",
-    postePrice: "22,70 €",
-    driverGain: "11,80 €",
-    commission: "5,00 €",
+    weight: "5 kg",
+    droovoPrice: "12,90 €",
+    postePrice: "17,39 €",
+    driverGain: "10,06 €",
+    commission: "2,84 €",
     delay: "24h",
   },
 ];
 
 const comparison = [
-  ["Prix 2-3 kg", "9 à 15 €", "11 à 20 €", "25 à 60 €"],
-  ["Délai estimé", "24h à 48h", "48h à 72h", "24h"],
-  ["Remise en main propre", "Oui", "Rare", "Selon service"],
-  ["Gain pour un particulier", "Oui", "Non", "Non"],
-  ["Impact écologique", "Trajet déjà prévu", "Réseau logistique", "Transport dédié"],
+  ["Prix 1 kg", "7,20 €", "9,59 €", "20 € et +"],
+  ["Prix 5 kg", "12,90 €", "17,39 €", "30 € et +"],
+  ["Économie client", "Environ -25%", "Tarif standard", "Souvent plus cher"],
+  ["Gain livreur", "5 à 12 € / colis", "Non", "Non"],
+  ["Impact", "Trajet déjà prévu", "Réseau logistique", "Transport dédié"],
 ];
 
 export default function DroovoApp() {
@@ -68,20 +67,40 @@ export default function DroovoApp() {
   const [distance, setDistance] = useState(690);
 
   const pricing = useMemo(() => {
-    const baseFee = 5;
-    const weightFee = weight * 0.8;
-    const distanceFee = distance * 0.018;
-    const total = Math.max(8.9, baseFee + weightFee + distanceFee);
+    const laposteRates = [
+      { maxWeight: 0.5, price: 7.59 },
+      { maxWeight: 1, price: 9.59 },
+      { maxWeight: 2, price: 11.19 },
+      { maxWeight: 5, price: 17.39 },
+      { maxWeight: 10, price: 25.29 },
+      { maxWeight: 15, price: 31.99 },
+      { maxWeight: 30, price: 39.59 },
+    ];
+
+    const poste =
+      laposteRates.find((rate) => weight <= rate.maxWeight)?.price || 39.59;
+
+    let droovoRate = 0.75;
+
+    if (distance < 150) {
+      droovoRate = 0.7;
+    } else if (distance > 700) {
+      droovoRate = 0.8;
+    }
+
+    const total = Math.max(4.9, poste * droovoRate);
     const commission = total * 0.22;
     const driver = total - commission;
-    const poste = total * 1.28;
+    const saving = poste - total;
+    const savingPercent = (saving / poste) * 100;
 
     return {
       total: total.toFixed(2),
       commission: commission.toFixed(2),
       driver: driver.toFixed(2),
       poste: poste.toFixed(2),
-      saving: (poste - total).toFixed(2),
+      saving: saving.toFixed(2),
+      savingPercent: savingPercent.toFixed(0),
     };
   }, [weight, distance]);
 
@@ -94,33 +113,45 @@ export default function DroovoApp() {
               <Truck size={24} />
             </div>
             <div>
-              <p className="text-2xl font-black tracking-tight text-slate-950">Droovo</p>
-              <p className="text-xs font-semibold text-slate-500">Livraison collaborative entre particuliers</p>
+              <p className="text-2xl font-black tracking-tight text-slate-950">
+                Droovo
+              </p>
+              <p className="text-xs font-semibold text-slate-500">
+                Livraison collaborative entre particuliers
+              </p>
             </div>
           </div>
 
           <nav className="hidden items-center gap-7 text-sm font-bold text-slate-600 md:flex">
-            <a href="#trajets" className="hover:text-emerald-700">Colis disponibles</a>
-            <a href="#prix" className="hover:text-emerald-700">Prix & commission</a>
-            <a href="#comparaison" className="hover:text-emerald-700">Comparaison</a>
-            <a href="#securite" className="hover:text-emerald-700">Sécurité</a>
+            <a href="#trajets" className="hover:text-emerald-700">
+              Colis disponibles
+            </a>
+            <a href="#prix" className="hover:text-emerald-700">
+              Prix & commission
+            </a>
+            <a href="#comparaison" className="hover:text-emerald-700">
+              Comparaison
+            </a>
+            <a href="#securite" className="hover:text-emerald-700">
+              Sécurité
+            </a>
           </nav>
 
           <div className="flex items-center gap-3">
-  <a
-    href="/login"
-    className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:border-emerald-600 hover:text-emerald-700"
-  >
-    Se connecter
-  </a>
+            <a
+              href="/login"
+              className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:border-emerald-600 hover:text-emerald-700"
+            >
+              Se connecter
+            </a>
 
-  <a
-    href="/signup"
-    className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
-  >
-    Créer un compte
-  </a>
-</div>
+            <a
+              href="/signup"
+              className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
+            >
+              Créer un compte
+            </a>
+          </div>
         </div>
       </header>
 
@@ -139,37 +170,47 @@ export default function DroovoApp() {
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              Droovo connecte une personne qui veut envoyer un colis avec une personne qui fait déjà le même trajet. Le client paie moins cher, le colis arrive plus vite, et le livreur rentabilise son déplacement.
+              Droovo connecte une personne qui veut envoyer un colis avec une
+              personne qui fait déjà le même trajet. Le client paie moins cher,
+              le colis arrive plus vite, et le livreur rentabilise son
+              déplacement.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
-  href="#declarer-trajet"
-  className="rounded-full bg-emerald-600 px-7 py-4 text-sm font-black text-white shadow-xl shadow-emerald-600/25 transition hover:bg-emerald-700"
->
-  Déclarer mon trajet <ArrowRight className="ml-2 inline" size={16} />
-</a>
+                href="#declarer-trajet"
+                className="rounded-full bg-emerald-600 px-7 py-4 text-sm font-black text-white shadow-xl shadow-emerald-600/25 transition hover:bg-emerald-700"
+              >
+                Déclarer mon trajet{" "}
+                <ArrowRight className="ml-2 inline" size={16} />
+              </a>
               <a
-  href="#envoyer-colis"
-  className="rounded-full border border-emerald-200 bg-white px-7 py-4 text-sm font-black text-slate-950 shadow-sm transition hover:border-emerald-600 hover:text-emerald-700"
->
-  Envoyer un colis
-</a>
+                href="#envoyer-colis"
+                className="rounded-full border border-emerald-200 bg-white px-7 py-4 text-sm font-black text-slate-950 shadow-sm transition hover:border-emerald-600 hover:text-emerald-700"
+              >
+                Envoyer un colis
+              </a>
             </div>
 
             <div className="mt-10 grid max-w-2xl grid-cols-3 gap-3">
-              <MiniStat value="20-22%" label="Commission app" />
-              <MiniStat value="24h" label="Livraison possible" />
-              <MiniStat value="6 à 15 €" label="Gain / colis" />
+              <MiniStat value="jusqu’à -30%" label="Économie client" />
+              <MiniStat value="22%" label="Commission app" />
+              <MiniStat value="5 à 12 €" label="Gain / colis" />
             </div>
           </div>
 
           <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-2xl shadow-slate-900/25 ring-4 ring-emerald-100">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-black text-emerald-300">Trajet déclaré</p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight">Marseille → Paris</h2>
-                <p className="mt-2 text-sm text-white/50">Conducteur vérifié · Départ aujourd’hui 17:30</p>
+                <p className="text-sm font-black text-emerald-300">
+                  Trajet déclaré
+                </p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight">
+                  Marseille → Paris
+                </h2>
+                <p className="mt-2 text-sm text-white/50">
+                  Conducteur vérifié · Départ aujourd’hui 17:30
+                </p>
               </div>
               <div className="rounded-2xl bg-emerald-400/15 p-3 text-emerald-300">
                 <Car size={26} />
@@ -180,7 +221,11 @@ export default function DroovoApp() {
               <div className="space-y-4">
                 <RouteLine icon={MapPin} title="Départ" value="Marseille Centre" />
                 <RouteLine icon={MapPin} title="Arrivée" value="Paris 11e" />
-                <RouteLine icon={Box} title="Volume disponible" value="Petit / moyen colis" />
+                <RouteLine
+                  icon={Box}
+                  title="Volume disponible"
+                  value="Petit / moyen colis"
+                />
                 <RouteLine icon={Clock3} title="Livraison estimée" value="24h" />
               </div>
             </div>
@@ -188,13 +233,23 @@ export default function DroovoApp() {
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-3xl bg-white/10 p-5 ring-1 ring-white/10">
                 <p className="text-sm text-white/55">Gain livreur estimé</p>
-                <p className="mt-2 text-3xl font-black text-emerald-300">+6 à 15 €</p>
-                <p className="mt-1 text-xs text-white/40">par colis accepté</p>
+                <p className="mt-2 text-3xl font-black text-emerald-300">
+                  +10,06 €
+                </p>
+                <p className="mt-1 text-xs text-white/40">
+                  pour un colis de 3 à 5 kg
+                </p>
               </div>
               <div className="rounded-3xl bg-emerald-400/15 p-5 ring-1 ring-emerald-300/20">
-                <p className="text-sm text-emerald-100/70">Commission Droovo</p>
-                <p className="mt-2 text-3xl font-black text-emerald-200">20%</p>
-                <p className="mt-1 text-xs text-emerald-100/50">sur chaque transaction</p>
+                <p className="text-sm text-emerald-100/70">
+                  Économie client
+                </p>
+                <p className="mt-2 text-3xl font-black text-emerald-200">
+                  -25%
+                </p>
+                <p className="mt-1 text-xs text-emerald-100/50">
+                  vs La Poste, selon le poids
+                </p>
               </div>
             </div>
           </div>
@@ -204,13 +259,23 @@ export default function DroovoApp() {
       <section id="trajets" className="mx-auto max-w-7xl px-6 py-16">
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">Marketplace</p>
-            <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Colis disponibles sur ton trajet</h2>
-            <p className="mt-3 max-w-2xl text-slate-600">Une interface claire pour aider le livreur à comprendre immédiatement son gain, le prix client et la commission Droovo.</p>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+              Marketplace
+            </p>
+            <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+              Colis disponibles sur ton trajet
+            </h2>
+            <p className="mt-3 max-w-2xl text-slate-600">
+              Une interface claire pour aider le livreur à comprendre
+              immédiatement son gain, le prix client et la commission Droovo.
+            </p>
           </div>
-          <button className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-sm ring-1 ring-emerald-200 hover:bg-emerald-50">
+          <a
+            href="/signup"
+            className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-sm ring-1 ring-emerald-200 hover:bg-emerald-50"
+          >
             Voir tous les colis
-          </button>
+          </a>
         </div>
 
         <div className="grid gap-5 lg:grid-cols-3">
@@ -223,40 +288,89 @@ export default function DroovoApp() {
       <section id="prix" className="bg-white py-16">
         <div className="mx-auto grid max-w-7xl gap-8 px-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">Moteur de prix</p>
-            <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Prix client, gain livreur, commission app.</h2>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+              Moteur de prix
+            </p>
+            <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+              Prix client, gain livreur, commission app.
+            </h2>
             <p className="mt-4 text-lg leading-8 text-slate-600">
-              Ce simulateur montre la logique métier à intégrer dans l’application : Droovo calcule automatiquement le prix selon la distance et le poids, puis répartit le montant entre le livreur et la plateforme.
+              Le simulateur compare un tarif Droovo avec les prix Colissimo
+              France métropolitaine. Le client voit son économie, le livreur
+              voit son gain et Droovo conserve sa commission.
             </p>
 
             <div className="mt-8 rounded-3xl bg-emerald-50 p-5 ring-1 ring-emerald-100">
               <div className="space-y-6">
-                <Slider label="Poids du colis" value={`${weight} kg`} min={1} max={20} current={weight} onChange={setWeight} />
-                <Slider label="Distance estimée" value={`${distance} km`} min={20} max={900} step={10} current={distance} onChange={setDistance} />
+                <Slider
+                  label="Poids du colis"
+                  value={`${weight} kg`}
+                  min={1}
+                  max={20}
+                  current={weight}
+                  onChange={setWeight}
+                />
+                <Slider
+                  label="Distance estimée"
+                  value={`${distance} km`}
+                  min={20}
+                  max={900}
+                  step={10}
+                  current={distance}
+                  onChange={setDistance}
+                />
               </div>
             </div>
           </div>
 
           <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-2xl shadow-slate-900/20 ring-4 ring-emerald-100">
             <div className="grid gap-4 sm:grid-cols-2">
-              <PriceBox label="Prix Droovo client" value={`${pricing.total} €`} icon={Euro} highlight />
-              <PriceBox label="Prix classique estimé" value={`${pricing.poste} €`} icon={Package} />
-              <PriceBox label="Gain livreur" value={`${pricing.driver} €`} icon={Car} />
-              <PriceBox label="Commission Droovo" value={`${pricing.commission} €`} icon={CreditCard} highlight />
+              <PriceBox
+                label="Prix Droovo client"
+                value={`${pricing.total} €`}
+                icon={Euro}
+                highlight
+              />
+              <PriceBox
+                label="Prix La Poste estimé"
+                value={`${pricing.poste} €`}
+                icon={Package}
+              />
+              <PriceBox
+                label="Gain livreur"
+                value={`${pricing.driver} €`}
+                icon={Car}
+              />
+              <PriceBox
+                label="Commission Droovo"
+                value={`${pricing.commission} €`}
+                icon={CreditCard}
+                highlight
+              />
             </div>
 
             <div className="mt-5 rounded-3xl bg-emerald-400/15 p-5 ring-1 ring-emerald-300/20">
-              <p className="text-sm text-emerald-100/70">Économie estimée pour le client</p>
-              <p className="mt-2 text-4xl font-black text-emerald-200">{pricing.saving} €</p>
-              <p className="mt-2 text-sm text-emerald-100/50">Comparaison indicative avec une solution classique.</p>
+              <p className="text-sm text-emerald-100/70">
+                Économie estimée pour le client
+              </p>
+              <p className="mt-2 text-5xl font-black text-emerald-200">
+                -{pricing.savingPercent}%
+              </p>
+              <p className="mt-2 text-sm text-emerald-100/60">
+                soit environ {pricing.saving} € économisés vs La Poste
+              </p>
             </div>
           </div>
         </div>
       </section>
 
       <section id="comparaison" className="mx-auto max-w-7xl px-6 py-16">
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">Positionnement</p>
-        <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">Droovo vs solutions classiques</h2>
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+          Positionnement
+        </p>
+        <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+          Droovo vs solutions classiques
+        </h2>
 
         <div className="mt-8 overflow-hidden rounded-[1.75rem] bg-white shadow-xl shadow-slate-200/70 ring-1 ring-emerald-100">
           <div className="grid grid-cols-4 bg-slate-950 px-5 py-4 text-sm font-black text-white">
@@ -266,9 +380,23 @@ export default function DroovoApp() {
             <span>Express</span>
           </div>
           {comparison.map((row) => (
-            <div key={row[0]} className="grid grid-cols-4 border-t border-slate-100 px-5 py-4 text-sm text-slate-700 odd:bg-white even:bg-emerald-50/35">
+            <div
+              key={row[0]}
+              className="grid grid-cols-4 border-t border-slate-100 px-5 py-4 text-sm text-slate-700 odd:bg-white even:bg-emerald-50/35"
+            >
               {row.map((cell, index) => (
-                <span key={cell} className={index === 1 ? "font-black text-emerald-700" : index === 0 ? "font-black text-slate-950" : ""}>{cell}</span>
+                <span
+                  key={cell}
+                  className={
+                    index === 1
+                      ? "font-black text-emerald-700"
+                      : index === 0
+                      ? "font-black text-slate-950"
+                      : ""
+                  }
+                >
+                  {cell}
+                </span>
               ))}
             </div>
           ))}
@@ -279,19 +407,29 @@ export default function DroovoApp() {
         <div className="mx-auto grid max-w-7xl gap-6 px-6 lg:grid-cols-2">
           <div className="rounded-[2rem] bg-emerald-600 p-8 text-white shadow-2xl shadow-emerald-600/25">
             <Euro size={34} />
-            <h2 className="mt-5 text-4xl font-black tracking-tight">Pour le livreur</h2>
+            <h2 className="mt-5 text-4xl font-black tracking-tight">
+              Pour le livreur
+            </h2>
             <p className="mt-4 text-lg leading-8 text-emerald-50">
-              Un particulier qui fait déjà un trajet peut gagner entre 6 € et 15 € par colis, sans modifier son déplacement principal.
+              Un particulier qui fait déjà un trajet peut gagner entre 5 € et
+              12 € par colis. Sur plusieurs colis, le trajet devient réellement
+              rentable sans créer un déplacement supplémentaire.
             </p>
             <div className="mt-7 rounded-3xl bg-white/15 p-5 ring-1 ring-white/20">
-              <p className="text-sm text-emerald-50/80">Exemple de rentabilité</p>
-              <p className="mt-2 text-3xl font-black">20 colis/mois = 180 € à 300 €</p>
+              <p className="text-sm text-emerald-50/80">
+                Exemple de rentabilité
+              </p>
+              <p className="mt-2 text-3xl font-black">
+                20 colis/mois = 110 € à 240 €
+              </p>
             </div>
           </div>
 
           <div className="rounded-[2rem] bg-emerald-50 p-8 ring-1 ring-emerald-100">
             <ShieldCheck className="text-emerald-700" size={34} />
-            <h2 className="mt-5 text-4xl font-black tracking-tight text-slate-950">Sécurité et confiance</h2>
+            <h2 className="mt-5 text-4xl font-black tracking-tight text-slate-950">
+              Sécurité et confiance
+            </h2>
             <div className="mt-7 grid gap-4">
               {[
                 "Vérification d’identité",
@@ -300,7 +438,10 @@ export default function DroovoApp() {
                 "Validation par l’expéditeur",
                 "Notation des utilisateurs",
               ].map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-emerald-100">
+                <div
+                  key={item}
+                  className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-emerald-100"
+                >
                   <CheckCircle2 className="text-emerald-600" size={20} />
                   <span className="font-black text-slate-800">{item}</span>
                 </div>
@@ -314,10 +455,16 @@ export default function DroovoApp() {
         <div className="rounded-[2rem] bg-slate-950 p-8 text-white shadow-2xl shadow-slate-900/20 md:p-10">
           <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] md:items-center">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-300">Prochaine étape</p>
-              <h2 className="mt-2 text-4xl font-black tracking-tight">Transformer cette maquette en vraie application connectée.</h2>
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-300">
+                Prochaine étape
+              </p>
+              <h2 className="mt-2 text-4xl font-black tracking-tight">
+                Transformer cette maquette en vraie application connectée.
+              </h2>
               <p className="mt-4 max-w-2xl text-white/60">
-                La prochaine version doit connecter les formulaires à Supabase, créer les vrais colis, enregistrer les trajets, calculer les prix et préparer Stripe.
+                La prochaine version doit connecter les formulaires à Supabase,
+                créer les vrais colis, enregistrer les trajets, calculer les
+                prix et préparer Stripe.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -328,7 +475,7 @@ export default function DroovoApp() {
             </div>
           </div>
         </div>
-           </section>
+      </section>
 
       <section id="connexion" className="mx-auto max-w-3xl px-6 py-24">
         <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
@@ -341,7 +488,8 @@ export default function DroovoApp() {
           </h2>
 
           <p className="mt-4 text-slate-600">
-            Connectez-vous pour publier un trajet, accepter un colis ou suivre vos livraisons.
+            Connectez-vous pour publier un trajet, accepter un colis ou suivre
+            vos livraisons.
           </p>
 
           <div className="mt-8 grid gap-4">
@@ -357,15 +505,16 @@ export default function DroovoApp() {
               className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
             />
 
-            <button className="rounded-2xl bg-emerald-600 px-5 py-4 font-black text-white hover:bg-emerald-700">
+            <a
+              href="/login"
+              className="rounded-2xl bg-emerald-600 px-5 py-4 text-center font-black text-white hover:bg-emerald-700"
+            >
               Se connecter
-            </button>
+            </a>
           </div>
         </div>
       </section>
-
     </main>
- 
   );
 }
 
@@ -399,31 +548,50 @@ function ParcelCard({ parcel }) {
         <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700">
           <Package size={26} />
         </div>
-        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{parcel.delay}</span>
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
+          {parcel.delay}
+        </span>
       </div>
-      <h3 className="text-xl font-black tracking-tight text-slate-950">{parcel.title}</h3>
-      <p className="mt-2 text-sm font-bold text-slate-500">{parcel.from} → {parcel.to}</p>
+      <h3 className="text-xl font-black tracking-tight text-slate-950">
+        {parcel.title}
+      </h3>
+      <p className="mt-2 text-sm font-bold text-slate-500">
+        {parcel.from} → {parcel.to}
+      </p>
       <p className="mt-1 text-sm text-slate-500">Poids : {parcel.weight}</p>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
         <Data label="Prix Droovo" value={parcel.droovoPrice} green />
-        <Data label="Prix classique" value={parcel.postePrice} />
+        <Data label="Prix La Poste" value={parcel.postePrice} />
         <Data label="Gain livreur" value={parcel.driverGain} green />
         <Data label="Commission app" value={parcel.commission} />
       </div>
 
-      <button className="mt-6 w-full rounded-full bg-emerald-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700">
+      <a
+        href="/signup"
+        className="mt-6 block w-full rounded-full bg-emerald-600 px-5 py-4 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
+      >
         Accepter ce colis
-      </button>
+      </a>
     </div>
   );
 }
 
 function Data({ label, value, green }) {
   return (
-    <div className={`rounded-2xl p-4 ring-1 ${green ? "bg-emerald-50 ring-emerald-100" : "bg-slate-50 ring-slate-100"}`}>
+    <div
+      className={`rounded-2xl p-4 ring-1 ${
+        green ? "bg-emerald-50 ring-emerald-100" : "bg-slate-50 ring-slate-100"
+      }`}
+    >
       <p className="text-xs font-black text-slate-400">{label}</p>
-      <p className={`mt-1 text-lg font-black ${green ? "text-emerald-700" : "text-slate-950"}`}>{value}</p>
+      <p
+        className={`mt-1 text-lg font-black ${
+          green ? "text-emerald-700" : "text-slate-950"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -450,7 +618,13 @@ function Slider({ label, value, min, max, step = 1, current, onChange }) {
 
 function PriceBox({ label, value, icon: Icon, highlight }) {
   return (
-    <div className={`rounded-3xl p-5 ${highlight ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-300/20" : "bg-white/10 text-white ring-1 ring-white/10"}`}>
+    <div
+      className={`rounded-3xl p-5 ${
+        highlight
+          ? "bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-300/20"
+          : "bg-white/10 text-white ring-1 ring-white/10"
+      }`}
+    >
       <Icon size={22} />
       <p className="mt-4 text-sm opacity-65">{label}</p>
       <p className="mt-2 text-3xl font-black">{value}</p>
