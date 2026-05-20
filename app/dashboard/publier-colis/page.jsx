@@ -60,8 +60,10 @@ export default function PublierColisPage() {
       user_id: user.id,
       title,
       description,
-      from_city: fromCity,
-      to_city: toCity,
+
+      departure_city: fromCity,
+      arrival_city: toCity,
+
       weight,
       price: pricing.droovoPrice,
       status: "active",
@@ -161,7 +163,9 @@ export default function PublierColisPage() {
                 disabled={loading}
                 className="mt-4 rounded-2xl bg-emerald-600 px-5 py-4 font-black text-white hover:bg-emerald-700 disabled:opacity-60"
               >
-                {loading ? "Publication..." : `Publier à ${pricing.droovoPrice} €`}
+                {loading
+                  ? "Publication..."
+                  : `Publier à ${pricing.droovoPrice} €`}
               </button>
             </form>
           </div>
@@ -172,11 +176,28 @@ export default function PublierColisPage() {
             </p>
 
             <div className="mt-6 grid gap-4">
-              <PriceLine label="Prix La Poste estimé" value={`${pricing.laposte} €`} />
-              <PriceLine label="Prix Droovo client" value={`${pricing.droovoPrice} €`} highlight />
-              <PriceLine label="Économie client" value={`${pricing.saving} €`} />
-              <PriceLine label="Gain livreur" value={`${pricing.driverGain} €`} highlight />
-              <PriceLine label="Commission Droovo" value={`${pricing.commission} €`} />
+              <PriceLine
+                label="Prix La Poste estimé"
+                value={`${pricing.laposte} €`}
+              />
+              <PriceLine
+                label="Prix Droovo client"
+                value={`${pricing.droovoPrice} €`}
+                highlight
+              />
+              <PriceLine
+                label="Économie client"
+                value={`${pricing.saving} €`}
+              />
+              <PriceLine
+                label="Gain livreur"
+                value={`${pricing.driverGain} €`}
+                highlight
+              />
+              <PriceLine
+                label="Commission Droovo"
+                value={`${pricing.commission} €`}
+              />
             </div>
 
             <p className="mt-6 text-sm leading-6 text-white/50">
