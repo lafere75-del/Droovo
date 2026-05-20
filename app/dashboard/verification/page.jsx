@@ -133,8 +133,8 @@ export default function VerificationPage() {
             onChange={setIdBack}
           />
 
-          <FileInput
-            label="Selfie"
+          <SelfieInput
+            label="Selfie en direct"
             onChange={setSelfie}
           />
 
@@ -171,6 +171,29 @@ function FileInput({ label, onChange }) {
         onChange={(e) => onChange(e.target.files[0])}
         className="w-full rounded-2xl border border-emerald-100 bg-white px-5 py-4"
       />
+    </div>
+  );
+}
+
+function SelfieInput({ label, onChange }) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-black text-slate-700">
+        {label}
+      </label>
+
+      <input
+        required
+        type="file"
+        accept="image/*"
+        capture="user"
+        onChange={(e) => onChange(e.target.files[0])}
+        className="w-full rounded-2xl border border-emerald-100 bg-white px-5 py-4"
+      />
+
+      <p className="mt-2 text-sm text-slate-500">
+        Le selfie doit être pris en direct avec la caméra du téléphone.
+      </p>
     </div>
   );
 }
