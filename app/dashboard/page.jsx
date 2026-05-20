@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const identityStatus = "pending";
-
+const identityStatus = "verified";
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-8 text-slate-950">
       <div className="mx-auto max-w-7xl">
