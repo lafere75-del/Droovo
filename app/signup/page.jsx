@@ -13,7 +13,16 @@ export default function SignupPage() {
   function handleSignup(e) {
     e.preventDefault();
 
-    // Temporaire : après création du compte, on envoie vers le dashboard
+    if (!fullname || !email || !password) {
+      alert("Veuillez remplir tous les champs avant de créer votre compte.");
+      return;
+    }
+
+    if (password.length < 6) {
+      alert("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+
     router.push("/dashboard");
   }
 
@@ -34,6 +43,7 @@ export default function SignupPage() {
 
         <form onSubmit={handleSignup} className="mt-8 grid gap-4">
           <input
+            required
             type="text"
             placeholder="Nom complet"
             value={fullname}
@@ -42,6 +52,7 @@ export default function SignupPage() {
           />
 
           <input
+            required
             type="email"
             placeholder="Adresse e-mail"
             value={email}
@@ -50,6 +61,7 @@ export default function SignupPage() {
           />
 
           <input
+            required
             type="password"
             placeholder="Mot de passe"
             value={password}
