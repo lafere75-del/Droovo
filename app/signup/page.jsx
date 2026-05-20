@@ -21,9 +21,26 @@ import { supabase } from "../../lib/supabaseClient";export default function Sign
     }
 
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+  email,
+  password,
+});
+
+console.log("SUPABASE SIGNUP DATA", data);
+console.log("SUPABASE SIGNUP ERROR", error);
+
+if (error) {
+  alert("Erreur Supabase : " + error.message);
+  setLoading(false);
+  return;
+}
+
+if (!data.user) {
+  alert("Aucun utilisateur créé. Vérifie la clé Supabase ou le projet connecté.");
+  setLoading(false);
+  return;
+}
+
+alert("Compte créé avec l'ID : " + data.user.id);
 
     if (error) {
       alert(error.message);
