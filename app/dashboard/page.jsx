@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
 import {
   BadgeCheck,
   Box,
@@ -12,7 +16,45 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-const identityStatus = "verified";
+  const identityStatus = "verified";
+
+  const [packages, setPackages] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  async function loadDashboard() {
+    setLoading(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const { data: userPackages } = await supabase
+      .from("packages")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    const { data: userTrips } = await supabase
+      .from("trips")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    setPackages(userPackages || []);
+    setTrips(userTrips || []);
+    setLoading(false);
+  }
+
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-8 text-slate-950">
       <div className="mx-auto max-w-7xl">
@@ -46,9 +88,8 @@ const identityStatus = "verified";
                   Vérification d’identité requise
                 </h2>
                 <p className="mt-2 text-slate-700">
-                  Vous pouvez consulter votre espace, mais vous devez faire
-                  vérifier votre identité avant de publier un colis ou déclarer
-                  un trajet.
+                  Vous devez faire vérifier votre identité avant de publier un
+                  colis ou déclarer un trajet.
                 </p>
                 <Link
                   href="/dashboard/verification"
@@ -62,10 +103,10 @@ const identityStatus = "verified";
         )}
 
         <section className="mt-6 grid gap-5 md:grid-cols-4">
-          <Stat icon={Package} label="Mes colis" value="0" />
-          <Stat icon={Car} label="Mes trajets" value="0" />
+          <Stat icon={Package} label="Mes colis" value={loading ? "..." : packages.length} />
+          <Stat icon={Car} label="Mes trajets" value={loading ? "..." : trips.length} />
           <Stat icon={CreditCard} label="Paiements" value="0 €" />
-          <Stat icon={BadgeCheck} label="Statut" value="À vérifier" />
+          <Stat icon={BadgeCheck} label="Statut" value="Vérifié" />
         </section>
 
         <section className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -88,7 +129,7 @@ const identityStatus = "verified";
           <ActionCard
             icon={FileCheck2}
             title="Vérification d’identité"
-            text="Ajoutez votre pièce d’identité et une photo du visage."
+            text="Ajoutez votre pièce d’identité, un selfie et un RIB."
             href="/dashboard/verification"
           />
 
@@ -109,9 +150,45 @@ const identityStatus = "verified";
           <ActionCard
             icon={UserRound}
             title="Mon profil"
-            text="Modifier mes informations personnelles et mon rôle."
+            text="Modifier mes informations personnelles."
             href="/dashboard/profil"
           />
+        </section>
+
+        <section className="mt-8 grid gap-6 lg:grid-cols-2">
+          <Panel title="Mes derniers trajets">
+            {trips.length === 0 ? (
+              <Empty text="Aucun trajet déclaré pour le moment." />
+            ) : (
+              trips.slice(0, 3).map((trip) => (
+                <Row
+                  key={trip.id}
+                  title={`${trip.from_city} → ${trip.to_city}`}
+                  text={`Date : ${
+                    trip.trip_date
+                      ? new Date(trip.trip_date).toLocaleDateString("fr-FR")
+                      : "Date non renseignée"
+                  }`}
+                  tag={`${trip.available_weight || 0} kg dispo`}
+                />
+              ))
+            )}
+          </Panel>
+
+          <Panel title="Mes derniers colis">
+            {packages.length === 0 ? (
+              <Empty text="Aucun colis publié pour le moment." />
+            ) : (
+              packages.slice(0, 3).map((pkg) => (
+                <Row
+                  key={pkg.id}
+                  title={`${pkg.departure_city} → ${pkg.arrival_city}`}
+                  text={pkg.title || "Colis sans titre"}
+                  tag={`${pkg.weight || 0} kg · ${pkg.price || 0} €`}
+                />
+              ))
+            )}
+          </Panel>
         </section>
       </div>
     </main>
@@ -153,6 +230,37 @@ function ActionCard({ icon: Icon, title, text, href, locked }) {
           Ouvrir
         </Link>
       )}
+    </div>
+  );
+}
+
+function Panel({ title, children }) {
+  return (
+    <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
+      <h2 className="text-xl font-black text-slate-950">{title}</h2>
+      <div className="mt-5 grid gap-3">{children}</div>
+    </div>
+  );
+}
+
+function Row({ title, text, tag }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
+      <div>
+        <p className="font-black text-slate-950">{title}</p>
+        <p className="mt-1 text-sm text-slate-600">{text}</p>
+      </div>
+      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
+        {tag}
+      </span>
+    </div>
+  );
+}
+
+function Empty({ text }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-100">
+      {text}
     </div>
   );
 }
