@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { supabase } from "../../lib/supabaseClient";export default function SignupPage() {
+import { supabase } from "../../lib/supabaseClient";
+
+export default function SignupPage() {
   const router = useRouter();
 
   const [fullname, setFullname] = useState("");
@@ -14,59 +16,47 @@ import { supabase } from "../../lib/supabaseClient";export default function Sign
     e.preventDefault();
     setLoading(true);
 
-    if (!fullname || !email || !password) {
-      alert("Veuillez remplir tous les champs.");
+    try {
+      if (!fullname || !email || !password) {
+        alert("Veuillez remplir tous les champs.");
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        alert("Erreur Supabase : " + error.message);
+        return;
+      }
+
+      const userId = data.user?.id;
+
+      if (!userId) {
+        alert("Aucun utilisateur créé.");
+        return;
+      }
+
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: userId,
+        fullname,
+        email,
+        role: "user",
+        identity_status: "pending",
+      });
+
+      if (profileError) {
+        alert("Compte créé, mais profil non enregistré : " + profileError.message);
+        return;
+      }
+
+      alert("Compte créé avec succès.");
+      router.push("/dashboard");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const { data, error } = await supabase.auth.signUp({
-  email,
-  password,
-});
-
-console.log("SUPABASE SIGNUP DATA", data);
-console.log("SUPABASE SIGNUP ERROR", error);
-
-if (error) {
-  alert("Erreur Supabase : " + error.message);
-  setLoading(false);
-  return;
-}
-
-if (!data.user) {
-  alert("Aucun utilisateur créé. Vérifie la clé Supabase ou le projet connecté.");
-  setLoading(false);
-  return;
-}
-
-alert("Compte créé avec l'ID : " + data.user.id);
-
-    if (error) {
-      alert(error.message);
-      setLoading(false);
-      return;
-    }
-
-    const userId = data.user?.id;
-
-if (userId) {
-  const { error: profileError } = await supabase.from("profiles").insert({
-    id: userId,
-    fullname,
-    email,
-    role: "user",
-    identity_status: "pending",
-  });
-
-  if (profileError) {
-    alert("Compte créé, mais profil non enregistré : " + profileError.message);
-    return;
-  }
-}
-
-    alert("Compte créé. Vérifiez votre e-mail si Supabase demande une confirmation.");
-    router.push("/dashboard");
   }
 
   return (
