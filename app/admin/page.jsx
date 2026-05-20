@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
+
 import {
   Users,
   ShieldAlert,
@@ -14,6 +16,25 @@ import {
 } from "lucide-react";
 
 export default async function AdminPage({ searchParams }) {
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", session.user.id)
+    .single();
+
+  if (!profile || profile.role !== "admin") {
+    redirect("/dashboard");
+  }
+
   const status = searchParams?.status || "all";
   const q = searchParams?.q || "";
   const page = Number(searchParams?.page || 1);
