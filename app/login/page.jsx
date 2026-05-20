@@ -2,22 +2,38 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleLogin(e) {
+  async function handleLogin(e) {
     e.preventDefault();
+    setLoading(true);
 
-    // temporaire
-    router.push("/dashboard");
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        alert("Erreur connexion : " + error.message);
+        return;
+      }
+
+      router.push("/dashboard");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <main className="min-h-screen bg-[#F4F7F5] flex items-center justify-center px-6">
+    <main className="flex min-h-screen items-center justify-center bg-[#F4F7F5] px-6">
       <div className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
         <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
           Connexion
@@ -33,6 +49,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="mt-8 grid gap-4">
           <input
+            required
             type="email"
             placeholder="Adresse e-mail"
             value={email}
@@ -41,6 +58,7 @@ export default function LoginPage() {
           />
 
           <input
+            required
             type="password"
             placeholder="Mot de passe"
             value={password}
@@ -50,11 +68,19 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="rounded-2xl bg-emerald-600 px-5 py-4 font-black text-white hover:bg-emerald-700"
+            disabled={loading}
+            className="rounded-2xl bg-emerald-600 px-5 py-4 font-black text-white hover:bg-emerald-700 disabled:opacity-60"
           >
-            Se connecter
+            {loading ? "Connexion..." : "Se connecter"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          Pas encore de compte ?
+          <a href="/signup" className="ml-1 font-black text-emerald-700">
+            Créer un compte
+          </a>
+        </p>
       </div>
     </main>
   );
