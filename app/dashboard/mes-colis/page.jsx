@@ -42,9 +42,9 @@ export default function MesColisPage() {
     return trips.filter((trip) => {
       return (
         trip.from_city?.toLowerCase().trim() ===
-          pkg.from_city?.toLowerCase().trim() &&
+          pkg.departure_city?.toLowerCase().trim() &&
         trip.to_city?.toLowerCase().trim() ===
-          pkg.to_city?.toLowerCase().trim() &&
+          pkg.arrival_city?.toLowerCase().trim() &&
         Number(trip.available_weight) >= Number(pkg.weight)
       );
     });
@@ -99,7 +99,7 @@ export default function MesColisPage() {
                     </h2>
 
                     <p className="mt-2 text-slate-600">
-                      {pkg.from_city} → {pkg.to_city}
+                      {pkg.departure_city} → {pkg.arrival_city}
                     </p>
 
                     <p className="mt-2 text-slate-500">
@@ -134,6 +134,14 @@ export default function MesColisPage() {
 
                         <p className="mt-1 text-sm text-slate-500">
                           {trip.available_weight} kg disponibles
+                        </p>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          Date :
+                          {" "}
+                          {trip.trip_date
+                            ? new Date(trip.trip_date).toLocaleDateString("fr-FR")
+                            : "Date non renseignée"}
                         </p>
                       </div>
 
