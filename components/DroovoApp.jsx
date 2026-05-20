@@ -354,10 +354,10 @@ export default function DroovoApp() {
                 Économie estimée pour le client
               </p>
               <p className="mt-2 text-5xl font-black text-emerald-200">
-                -{pricing.savingPercent}%
+                {pricing.saving} €
               </p>
-              <p className="mt-2 text-sm text-emerald-100/60">
-                soit environ {pricing.saving} € économisés vs La Poste
+              <p className="mt-2 text-sm text-emerald-100/70">
+                soit environ -{pricing.savingPercent}% vs La Poste
               </p>
             </div>
           </div>
