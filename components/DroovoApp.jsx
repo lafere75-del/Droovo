@@ -107,8 +107,8 @@ export default function DroovoApp() {
           </nav>
 
           <a
-  href="#connexion"
-  className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
+href="/login"
+            className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
 >
   Se connecter
 </a>
