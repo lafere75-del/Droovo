@@ -22,7 +22,7 @@ import {
 const parcels = [
   {
     title: "Petit colis — documents",
-    from: "Avignon Centre",
+    from: "Marseille Centre",
     to: "Paris 11e",
     weight: "1,2 kg",
     droovoPrice: "9,20 €",
