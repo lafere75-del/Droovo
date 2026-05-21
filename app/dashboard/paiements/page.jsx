@@ -97,6 +97,57 @@ export default function PaiementsPage() {
           </p>
         </div>
 
+        <section className="mb-12 grid gap-5 md:grid-cols-2">
+          <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
+            <h2 className="text-2xl font-black text-slate-950">
+              Moyen de paiement
+            </h2>
+
+            <p className="mt-2 text-slate-600">
+              Ajoutez une carte bancaire pour payer vos livraisons.
+            </p>
+
+            <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+              <p className="font-black text-slate-900">
+                Aucune carte enregistrée
+              </p>
+
+              <p className="mt-1 text-sm text-slate-500">
+                La carte sera gérée par Stripe. Droovo ne stocke pas les numéros
+                de carte.
+              </p>
+            </div>
+
+            <button className="mt-6 rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700">
+              Ajouter une carte bancaire
+            </button>
+          </div>
+
+          <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
+            <h2 className="text-2xl font-black text-slate-950">
+              Compte bancaire livreur
+            </h2>
+
+            <p className="mt-2 text-slate-600">
+              Renseignez votre RIB pour recevoir vos encaissements.
+            </p>
+
+            <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+              <p className="font-black text-slate-900">
+                RIB transporteur
+              </p>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Les versements seront ensuite sécurisés avec Stripe Connect.
+              </p>
+            </div>
+
+            <button className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800">
+              Ajouter ou modifier mon RIB
+            </button>
+          </div>
+        </section>
+
         <section className="mb-12">
           <h2 className="text-2xl font-black text-slate-950">
             Mes paiements à effectuer
@@ -145,7 +196,9 @@ export default function PaiementsPage() {
 function PaymentCard({ booking, mode, onPay }) {
   const price = Number(booking.packages?.price || 0);
   const platformFee = Number(booking.platform_fee || price * 0.22).toFixed(2);
-  const driverAmount = Number(booking.driver_amount || price - platformFee).toFixed(2);
+  const driverAmount = Number(
+    booking.driver_amount || price - platformFee
+  ).toFixed(2);
 
   return (
     <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
@@ -156,7 +209,8 @@ function PaymentCard({ booking, mode, onPay }) {
           </h3>
 
           <p className="mt-2 text-slate-600">
-            {booking.packages?.departure_city} → {booking.packages?.arrival_city}
+            {booking.packages?.departure_city} →{" "}
+            {booking.packages?.arrival_city}
           </p>
 
           <p className="mt-2 text-slate-500">
@@ -190,7 +244,8 @@ function PaymentCard({ booking, mode, onPay }) {
 
       {mode === "driver" && (
         <p className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-600">
-          Le gain sera disponible après paiement de l’expéditeur et validation de la livraison.
+          Le gain sera disponible après paiement de l’expéditeur et validation de
+          la livraison.
         </p>
       )}
     </div>
