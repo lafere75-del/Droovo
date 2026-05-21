@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 import {
   ArrowRight,
   BadgeCheck,
@@ -65,6 +66,38 @@ const comparison = [
 export default function DroovoApp() {
   const [weight, setWeight] = useState(3);
   const [distance, setDistance] = useState(690);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [liveTrips, setLiveTrips] = useState([]);
+  const [livePackages, setLivePackages] = useState([]);
+
+  useEffect(() => {
+    loadHomeData();
+  }, []);
+
+  async function loadHomeData() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setCurrentUser(user);
+
+    const { data: trips } = await supabase
+      .from("trips")
+      .select("*")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    const { data: packagesData } = await supabase
+      .from("packages")
+      .select("*")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    setLiveTrips(trips || []);
+    setLivePackages(packagesData || []);
+  }
 
   const pricing = useMemo(() => {
     const laposteRates = [
@@ -123,6 +156,9 @@ export default function DroovoApp() {
           </div>
 
           <nav className="hidden items-center gap-7 text-sm font-bold text-slate-600 md:flex">
+            <a href="#fil-actualite" className="hover:text-emerald-700">
+              Fil d’actualité
+            </a>
             <a href="#trajets" className="hover:text-emerald-700">
               Colis disponibles
             </a>
@@ -138,19 +174,30 @@ export default function DroovoApp() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <a
-              href="/login"
-              className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:border-emerald-600 hover:text-emerald-700"
-            >
-              Se connecter
-            </a>
+            {currentUser ? (
+              <a
+                href="/dashboard"
+                className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
+              >
+                Mon espace
+              </a>
+            ) : (
+              <>
+                <a
+                  href="/login"
+                  className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:border-emerald-600 hover:text-emerald-700"
+                >
+                  Se connecter
+                </a>
 
-            <a
-              href="/signup"
-              className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
-            >
-              Créer un compte
-            </a>
+                <a
+                  href="/signup"
+                  className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
+                >
+                  Créer un compte
+                </a>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -178,14 +225,14 @@ export default function DroovoApp() {
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
-                href="#declarer-trajet"
+                href={currentUser ? "/dashboard/declarer-trajet" : "/signup"}
                 className="rounded-full bg-emerald-600 px-7 py-4 text-sm font-black text-white shadow-xl shadow-emerald-600/25 transition hover:bg-emerald-700"
               >
                 Déclarer mon trajet{" "}
                 <ArrowRight className="ml-2 inline" size={16} />
               </a>
               <a
-                href="#envoyer-colis"
+                href={currentUser ? "/dashboard/publier-colis" : "/signup"}
                 className="rounded-full border border-emerald-200 bg-white px-7 py-4 text-sm font-black text-slate-950 shadow-sm transition hover:border-emerald-600 hover:text-emerald-700"
               >
                 Envoyer un colis
@@ -256,6 +303,69 @@ export default function DroovoApp() {
         </div>
       </section>
 
+      <section id="fil-actualite" className="mx-auto max-w-7xl px-6 py-16">
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+              Fil d’actualité
+            </p>
+            <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+              Trajets et colis disponibles
+            </h2>
+            <p className="mt-3 max-w-2xl text-slate-600">
+              Consultez les dernières opportunités publiées sur Droovo.
+            </p>
+          </div>
+
+          <a
+            href={currentUser ? "/dashboard" : "/login"}
+            className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white"
+          >
+            {currentUser ? "Mon espace" : "Se connecter"}
+          </a>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <LivePanel title="Derniers trajets">
+            {liveTrips.length === 0 ? (
+              <EmptyLive text="Aucun trajet publié pour le moment." />
+            ) : (
+              liveTrips.map((trip) => (
+                <LiveItem
+                  key={trip.id}
+                  title={`${trip.departure_city || "Départ"} → ${
+                    trip.arrival_city || "Arrivée"
+                  }`}
+                  text={`Date : ${
+                    trip.trip_date
+                      ? new Date(trip.trip_date).toLocaleDateString("fr-FR")
+                      : "Non renseignée"
+                  }`}
+                  tag={`${trip.available_weight || 0} kg dispo`}
+                />
+              ))
+            )}
+          </LivePanel>
+
+          <LivePanel title="Derniers colis">
+            {livePackages.length === 0 ? (
+              <EmptyLive text="Aucun colis publié pour le moment." />
+            ) : (
+              livePackages.map((pkg) => (
+                <LiveItem
+                  key={pkg.id}
+                  title={pkg.title || "Colis"}
+                  text={`${pkg.departure_city || "Départ"} → ${
+                    pkg.arrival_city || "Arrivée"
+                  }`}
+                  tag={`${pkg.weight || 0} kg · ${pkg.price || 0} €`}
+                />
+              ))
+            )}
+          </LivePanel>
+        </div>
+      </section>
+
       <section id="trajets" className="mx-auto max-w-7xl px-6 py-16">
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
@@ -271,7 +381,7 @@ export default function DroovoApp() {
             </p>
           </div>
           <a
-            href="/signup"
+            href={currentUser ? "/dashboard/mes-trajets" : "/signup"}
             className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-sm ring-1 ring-emerald-200 hover:bg-emerald-50"
           >
             Voir tous les colis
@@ -280,7 +390,7 @@ export default function DroovoApp() {
 
         <div className="grid gap-5 lg:grid-cols-3">
           {parcels.map((parcel) => (
-            <ParcelCard key={parcel.title} parcel={parcel} />
+            <ParcelCard key={parcel.title} parcel={parcel} currentUser={currentUser} />
           ))}
         </div>
       </section>
@@ -477,43 +587,40 @@ export default function DroovoApp() {
         </div>
       </section>
 
-      <section id="connexion" className="mx-auto max-w-3xl px-6 py-24">
-        <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
-            Connexion
-          </p>
+      {!currentUser && (
+        <section id="connexion" className="mx-auto max-w-3xl px-6 py-24">
+          <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+              Connexion
+            </p>
 
-          <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
-            Accéder à son compte Droovo
-          </h2>
+            <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+              Accéder à son compte Droovo
+            </h2>
 
-          <p className="mt-4 text-slate-600">
-            Connectez-vous pour publier un trajet, accepter un colis ou suivre
-            vos livraisons.
-          </p>
+            <p className="mt-4 text-slate-600">
+              Connectez-vous pour publier un trajet, accepter un colis ou suivre
+              vos livraisons.
+            </p>
 
-          <div className="mt-8 grid gap-4">
-            <input
-              type="email"
-              placeholder="Adresse e-mail"
-              className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
-            />
+            <div className="mt-8 grid gap-4">
+              <a
+                href="/login"
+                className="rounded-2xl bg-emerald-600 px-5 py-4 text-center font-black text-white hover:bg-emerald-700"
+              >
+                Se connecter
+              </a>
 
-            <input
-              type="password"
-              placeholder="Mot de passe"
-              className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
-            />
-
-            <a
-              href="/login"
-              className="rounded-2xl bg-emerald-600 px-5 py-4 text-center font-black text-white hover:bg-emerald-700"
-            >
-              Se connecter
-            </a>
+              <a
+                href="/signup"
+                className="rounded-2xl border border-emerald-100 px-5 py-4 text-center font-black text-slate-950 hover:border-emerald-600"
+              >
+                Créer un compte
+              </a>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </main>
   );
 }
@@ -524,6 +631,35 @@ function MiniStat({ value, label }) {
       <p className="text-2xl font-black text-emerald-700">{value}</p>
       <p className="mt-1 text-xs font-bold text-slate-500">{label}</p>
     </div>
+  );
+}
+
+function LivePanel({ title, children }) {
+  return (
+    <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
+      <h3 className="text-2xl font-black text-slate-950">{title}</h3>
+      <div className="mt-5 grid gap-3">{children}</div>
+    </div>
+  );
+}
+
+function LiveItem({ title, text, tag }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
+      <p className="font-black text-slate-950">{title}</p>
+      <p className="mt-1 text-sm text-slate-600">{text}</p>
+      <span className="mt-3 inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
+        {tag}
+      </span>
+    </div>
+  );
+}
+
+function EmptyLive({ text }) {
+  return (
+    <p className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">
+      {text}
+    </p>
   );
 }
 
@@ -541,7 +677,7 @@ function RouteLine({ icon: Icon, title, value }) {
   );
 }
 
-function ParcelCard({ parcel }) {
+function ParcelCard({ parcel, currentUser }) {
   return (
     <div className="rounded-[1.75rem] bg-white p-6 shadow-xl shadow-slate-200/60 ring-1 ring-emerald-100 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-emerald-100">
       <div className="mb-5 flex items-start justify-between gap-4">
@@ -568,7 +704,7 @@ function ParcelCard({ parcel }) {
       </div>
 
       <a
-        href="/signup"
+        href={currentUser ? "/dashboard/mes-trajets" : "/signup"}
         className="mt-6 block w-full rounded-full bg-emerald-600 px-5 py-4 text-center text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
       >
         Accepter ce colis
