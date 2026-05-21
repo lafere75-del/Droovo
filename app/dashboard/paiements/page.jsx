@@ -20,6 +20,8 @@ export default function PaiementsPage() {
   const [ribName, setRibName] = useState("");
   const [ribSaved, setRibSaved] = useState(false);
 
+  const [paymentSettings, setPaymentSettings] = useState(null);
+
   useEffect(() => {
     loadPayments();
   }, []);
@@ -34,6 +36,30 @@ export default function PaiementsPage() {
     if (!user) {
       setLoading(false);
       return;
+    }
+
+    const { data: paymentData } = await supabase
+      .from("payment_settings")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (paymentData) {
+      setPaymentSettings(paymentData);
+
+      if (paymentData.card_last4) {
+        setCardSaved(true);
+        setCardNumber(`****${paymentData.card_last4}`);
+      }
+
+      if (paymentData.iban_last4) {
+        setRibSaved(true);
+        setIban(`****${paymentData.iban_last4}`);
+      }
+
+      if (paymentData.iban_holder) {
+        setRibName(paymentData.iban_holder);
+      }
     }
 
     const { data: senderData } = await supabase
@@ -61,24 +87,75 @@ export default function PaiementsPage() {
     setLoading(false);
   }
 
-  function saveCard() {
+  async function saveCard() {
     if (!cardName.trim() || !cardNumber.trim() || !cardExpiry.trim()) {
       alert("Complète les informations de la carte.");
       return;
     }
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("Utilisateur non connecté.");
+      return;
+    }
+
+    const last4 = cardNumber.slice(-4);
+
+    const { error } = await supabase
+      .from("payment_settings")
+      .upsert({
+        user_id: user.id,
+        card_last4: last4,
+      });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
     setCardSaved(true);
     setShowCardForm(false);
+
+    await loadPayments();
   }
 
-  function saveRib() {
+  async function saveRib() {
     if (!ribName.trim() || !iban.trim()) {
       alert("Complète le titulaire et l’IBAN.");
       return;
     }
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("Utilisateur non connecté.");
+      return;
+    }
+
+    const ibanLast4 = iban.slice(-4);
+
+    const { error } = await supabase
+      .from("payment_settings")
+      .upsert({
+        user_id: user.id,
+        iban_last4: ibanLast4,
+        iban_holder: ribName,
+      });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
     setRibSaved(true);
     setShowRibForm(false);
+
+    await loadPayments();
   }
 
   async function simulatePayment(booking) {
