@@ -58,8 +58,10 @@ export default function DeclarerTrajetPage() {
 
       const { error } = await supabase.from("trips").insert({
         user_id: user.id,
-        from_city: fromCity,
-        to_city: toCity,
+
+        departure_city: fromCity,
+        arrival_city: toCity,
+
         trip_date: date,
         available_weight: availableWeight,
         estimated_gain: pricing.driverGain,
@@ -184,9 +186,20 @@ export default function DeclarerTrajetPage() {
             </div>
 
             <div className="mt-4 grid gap-3">
-              <PriceLine label="Prix Droovo client" value={`${pricing.droovoPrice} €`} />
-              <PriceLine label="Prix La Poste estimé" value={`${pricing.laposte} €`} />
-              <PriceLine label="Commission Droovo" value={`${pricing.commission} €`} />
+              <PriceLine
+                label="Prix Droovo client"
+                value={`${pricing.droovoPrice} €`}
+              />
+
+              <PriceLine
+                label="Prix La Poste estimé"
+                value={`${pricing.laposte} €`}
+              />
+
+              <PriceLine
+                label="Commission Droovo"
+                value={`${pricing.commission} €`}
+              />
             </div>
 
             <p className="mt-6 text-sm leading-6 text-white/60">
