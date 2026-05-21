@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -21,6 +22,8 @@ export default function MesTrajetsPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
+      setTrips([]);
+      setPackages([]);
       setLoading(false);
       return;
     }
@@ -100,7 +103,6 @@ export default function MesTrajetsPage() {
       alert("Demande envoyée à l’expéditeur.");
 
       await loadData();
-
     } catch (error) {
       alert("Erreur : " + error.message);
     }
@@ -119,6 +121,14 @@ export default function MesTrajetsPage() {
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-10">
       <div className="mx-auto max-w-6xl">
+        <div className="mb-6">
+          <Link
+            href="/dashboard"
+            className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+          >
+            ← Retour au dashboard
+          </Link>
+        </div>
 
         <div className="mb-8">
           <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
@@ -135,12 +145,18 @@ export default function MesTrajetsPage() {
         </div>
 
         <div className="grid gap-6">
-
           {trips.length === 0 && (
             <div className="rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-emerald-100">
               <p className="text-lg font-bold text-slate-700">
-                Aucun trajet publié.
+                Aucun trajet publié ou session non connectée.
               </p>
+
+              <Link
+                href="/dashboard/declarer-trajet"
+                className="mt-5 inline-block rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
+              >
+                Déclarer un trajet
+              </Link>
             </div>
           )}
 
@@ -152,35 +168,50 @@ export default function MesTrajetsPage() {
                 key={trip.id}
                 className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100"
               >
-
                 <div className="flex flex-wrap items-start justify-between gap-4">
-
                   <div>
                     <h2 className="text-2xl font-black text-slate-950">
-                      {trip.departure_city} → {trip.arrival_city}
+                      {trip.departure_city || "Départ non renseigné"} →{" "}
+                      {trip.arrival_city || "Arrivée non renseignée"}
                     </h2>
 
                     <p className="mt-2 text-slate-600">
-                      Date :
-                      {" "}
+                      Date :{" "}
                       {trip.trip_date
                         ? new Date(trip.trip_date).toLocaleDateString("fr-FR")
                         : "Date non renseignée"}
                     </p>
 
                     <p className="mt-2 text-slate-500">
-                      Capacité : {trip.available_weight} kg disponibles
+                      Capacité :{" "}
+                      {trip.available_weight
+                        ? `${trip.available_weight} kg disponibles`
+                        : "Non renseignée"}
                     </p>
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <Link
+                        href={`/dashboard/mes-trajets/${trip.id}`}
+                        className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800"
+                      >
+                        Voir le trajet
+                      </Link>
+
+                      <Link
+                        href="/dashboard/messages"
+                        className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+                      >
+                        Messages
+                      </Link>
+                    </div>
                   </div>
 
                   <div className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-700">
                     {compatiblePackages.length} colis compatible(s)
                   </div>
-
                 </div>
 
                 <div className="mt-6 grid gap-4">
-
                   {compatiblePackages.length === 0 && (
                     <div className="rounded-2xl bg-slate-100 p-5 text-slate-600">
                       Aucun colis compatible pour le moment.
@@ -192,7 +223,6 @@ export default function MesTrajetsPage() {
                       key={pkg.id}
                       className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-100 p-5"
                     >
-
                       <div>
                         <p className="font-black text-slate-950">
                           {pkg.title || "Colis"}
@@ -207,33 +237,39 @@ export default function MesTrajetsPage() {
                         </p>
 
                         <p className="mt-1 text-sm text-slate-500">
-                          Date :
-                          {" "}
+                          Date :{" "}
                           {pkg.desired_date
-                            ? new Date(pkg.desired_date).toLocaleDateString("fr-FR")
+                            ? new Date(pkg.desired_date).toLocaleDateString(
+                                "fr-FR"
+                              )
                             : "Non renseignée"}
                         </p>
                       </div>
 
-                      <button
-                        disabled={actionLoading}
-                        onClick={() => handleAcceptTransport(pkg, trip)}
-                        className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60"
-                      >
-                        {actionLoading
-                          ? "Envoi..."
-                          : "Accepter le transport"}
-                      </button>
+                      <div className="flex flex-wrap gap-3">
+                        <Link
+                          href={`/dashboard/mes-colis/${pkg.id}`}
+                          className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+                        >
+                          Voir le colis
+                        </Link>
 
+                        <button
+                          disabled={actionLoading}
+                          onClick={() => handleAcceptTransport(pkg, trip)}
+                          className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                          {actionLoading
+                            ? "Envoi..."
+                            : "Accepter le transport"}
+                        </button>
+                      </div>
                     </div>
                   ))}
-
                 </div>
-
               </div>
             );
           })}
-
         </div>
       </div>
     </main>
