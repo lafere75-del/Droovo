@@ -11,6 +11,7 @@ export default function PublierColisPage() {
   const [description, setDescription] = useState("");
   const [fromCity, setFromCity] = useState("");
   const [toCity, setToCity] = useState("");
+  const [desiredDate, setDesiredDate] = useState("");
   const [weight, setWeight] = useState(3);
   const [loading, setLoading] = useState(false);
 
@@ -63,6 +64,7 @@ export default function PublierColisPage() {
 
       departure_city: fromCity,
       arrival_city: toCity,
+      desired_date: desiredDate,
 
       weight,
       price: pricing.droovoPrice,
@@ -140,6 +142,20 @@ export default function PublierColisPage() {
                   value={toCity}
                   onChange={(e) => setToCity(e.target.value)}
                   className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-black text-slate-700">
+                  Date souhaitée de livraison
+                </label>
+
+                <input
+                  required
+                  type="date"
+                  value={desiredDate}
+                  onChange={(e) => setDesiredDate(e.target.value)}
+                  className="w-full rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
                 />
               </div>
 
