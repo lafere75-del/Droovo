@@ -83,17 +83,28 @@ export default function MesTrajetsPage() {
         return;
       }
 
-      const { error } = await supabase.from("bookings").insert({
-        package_id: pkg.id,
-        trip_id: trip.id,
-        sender_id: pkg.user_id,
-        driver_id: user.id,
-        status: "pending",
-      });
+      const { data: bookingData, error } = await supabase
+        .from("bookings")
+        .insert({
+          package_id: pkg.id,
+          trip_id: trip.id,
+          sender_id: pkg.user_id,
+          driver_id: user.id,
+          status: "pending",
+          tracking_status: "booking_created",
+        })
+        .select()
+        .single();
 
       if (error) {
         throw error;
       }
+
+      await supabase.from("tracking_events").insert({
+        booking_id: bookingData.id,
+        status: "booking_created",
+        message: "Demande de transport créée",
+      });
 
       await supabase
         .from("packages")
