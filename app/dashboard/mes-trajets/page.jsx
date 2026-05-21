@@ -7,6 +7,7 @@ export default function MesTrajetsPage() {
   const [trips, setTrips] = useState([]);
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -54,6 +55,59 @@ export default function MesTrajetsPage() {
     });
   }
 
+  async function handleAcceptTransport(pkg, trip) {
+    setActionLoading(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert("Utilisateur non connecté.");
+        return;
+      }
+
+      const { data: existingBooking } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("package_id", pkg.id)
+        .eq("trip_id", trip.id)
+        .maybeSingle();
+
+      if (existingBooking) {
+        alert("Une demande existe déjà pour ce colis.");
+        return;
+      }
+
+      const { error } = await supabase.from("bookings").insert({
+        package_id: pkg.id,
+        trip_id: trip.id,
+        sender_id: pkg.user_id,
+        driver_id: user.id,
+        status: "pending",
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await supabase
+        .from("packages")
+        .update({ status: "reserved" })
+        .eq("id", pkg.id);
+
+      alert("Demande envoyée à l’expéditeur.");
+
+      await loadData();
+
+    } catch (error) {
+      alert("Erreur : " + error.message);
+    }
+
+    setActionLoading(false);
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[#F4F7F5] p-10">
@@ -65,6 +119,7 @@ export default function MesTrajetsPage() {
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-10">
       <div className="mx-auto max-w-6xl">
+
         <div className="mb-8">
           <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
             Mes trajets
@@ -80,6 +135,7 @@ export default function MesTrajetsPage() {
         </div>
 
         <div className="grid gap-6">
+
           {trips.length === 0 && (
             <div className="rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-emerald-100">
               <p className="text-lg font-bold text-slate-700">
@@ -96,14 +152,17 @@ export default function MesTrajetsPage() {
                 key={trip.id}
                 className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100"
               >
+
                 <div className="flex flex-wrap items-start justify-between gap-4">
+
                   <div>
                     <h2 className="text-2xl font-black text-slate-950">
                       {trip.departure_city} → {trip.arrival_city}
                     </h2>
 
                     <p className="mt-2 text-slate-600">
-                      Date :{" "}
+                      Date :
+                      {" "}
                       {trip.trip_date
                         ? new Date(trip.trip_date).toLocaleDateString("fr-FR")
                         : "Date non renseignée"}
@@ -117,9 +176,11 @@ export default function MesTrajetsPage() {
                   <div className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-700">
                     {compatiblePackages.length} colis compatible(s)
                   </div>
+
                 </div>
 
                 <div className="mt-6 grid gap-4">
+
                   {compatiblePackages.length === 0 && (
                     <div className="rounded-2xl bg-slate-100 p-5 text-slate-600">
                       Aucun colis compatible pour le moment.
@@ -131,9 +192,10 @@ export default function MesTrajetsPage() {
                       key={pkg.id}
                       className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-100 p-5"
                     >
+
                       <div>
                         <p className="font-black text-slate-950">
-                          {pkg.title || "Colis sans titre"}
+                          {pkg.title || "Colis"}
                         </p>
 
                         <p className="mt-1 text-sm text-slate-500">
@@ -143,17 +205,35 @@ export default function MesTrajetsPage() {
                         <p className="mt-1 text-sm text-slate-500">
                           {pkg.weight} kg · {pkg.price} €
                         </p>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          Date :
+                          {" "}
+                          {pkg.desired_date
+                            ? new Date(pkg.desired_date).toLocaleDateString("fr-FR")
+                            : "Non renseignée"}
+                        </p>
                       </div>
 
-                      <button className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700">
-                        Proposer de transporter
+                      <button
+                        disabled={actionLoading}
+                        onClick={() => handleAcceptTransport(pkg, trip)}
+                        className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        {actionLoading
+                          ? "Envoi..."
+                          : "Accepter le transport"}
                       </button>
+
                     </div>
                   ))}
+
                 </div>
+
               </div>
             );
           })}
+
         </div>
       </div>
     </main>
