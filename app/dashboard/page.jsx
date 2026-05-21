@@ -145,6 +145,13 @@ export default function DashboardPage() {
           />
 
           <ActionCard
+            icon={Package}
+            title="Demandes"
+            text="Voir les demandes de transport reçues."
+            href="/dashboard/demandes"
+          />
+
+          <ActionCard
             icon={FileCheck2}
             title="Vérification d’identité"
             text="Ajoutez votre pièce d’identité, un selfie et un RIB."
