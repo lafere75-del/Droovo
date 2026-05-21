@@ -174,31 +174,45 @@ export default function DroovoApp() {
           </nav>
 
           <div className="flex items-center gap-3">
-            {currentUser ? (
-              <a
-                href="/dashboard"
-                className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
-              >
-                Mon espace
-              </a>
-            ) : (
-              <>
-                <a
-                  href="/login"
-                  className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:border-emerald-600 hover:text-emerald-700"
-                >
-                  Se connecter
-                </a>
+  {currentUser ? (
+    <div className="flex items-center gap-3">
 
-                <a
-                  href="/signup"
-                  className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
-                >
-                  Créer un compte
-                </a>
-              </>
-            )}
-          </div>
+      <a
+        href="/dashboard"
+        className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
+      >
+        Mon espace
+      </a>
+
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut();
+          window.location.href = "/";
+        }}
+        className="rounded-full border border-red-200 bg-white px-5 py-3 text-sm font-black text-red-600 transition hover:bg-red-50"
+      >
+        Déconnexion
+      </button>
+
+    </div>
+  ) : (
+    <>
+      <a
+        href="/login"
+        className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:border-emerald-600 hover:text-emerald-700"
+      >
+        Se connecter
+      </a>
+
+      <a
+        href="/signup"
+        className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
+      >
+        Créer un compte
+      </a>
+    </>
+  )}
+</div>
         </div>
       </header>
 
