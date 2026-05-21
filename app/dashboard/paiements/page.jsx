@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -169,6 +170,7 @@ export default function PaiementsPage() {
         payment_status: "paid",
         platform_fee: platformFee,
         driver_amount: driverAmount,
+        tracking_status: "paid",
       })
       .eq("id", booking.id);
 
@@ -176,6 +178,12 @@ export default function PaiementsPage() {
       alert("Erreur paiement : " + error.message);
       return;
     }
+
+    await supabase.from("tracking_events").insert({
+      booking_id: booking.id,
+      status: "paid",
+      message: "Paiement enregistré",
+    });
 
     alert("Paiement simulé avec succès.");
     loadPayments();
@@ -243,7 +251,8 @@ export default function PaiementsPage() {
                   </p>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    La carte sera gérée par Stripe. Droovo ne stocke pas les numéros de carte.
+                    La carte sera gérée par Stripe. Droovo ne stocke pas les
+                    numéros de carte.
                   </p>
                 </>
               )}
@@ -312,9 +321,7 @@ export default function PaiementsPage() {
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
               {ribSaved ? (
                 <>
-                  <p className="font-black text-slate-900">
-                    RIB enregistré
-                  </p>
+                  <p className="font-black text-slate-900">RIB enregistré</p>
 
                   <p className="mt-1 text-sm text-slate-500">
                     IBAN terminant par {iban.slice(-4)}
@@ -461,16 +468,25 @@ function PaymentCard({ booking, mode, onPay }) {
         </span>
       </div>
 
-      {mode === "sender" &&
-        booking.status === "accepted" &&
-        booking.payment_status !== "paid" && (
-          <button
-            onClick={onPay}
-            className="mt-6 rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
-          >
-            Payer maintenant
-          </button>
-        )}
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link
+          href={`/dashboard/suivi/${booking.id}`}
+          className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800"
+        >
+          Suivre la livraison
+        </Link>
+
+        {mode === "sender" &&
+          booking.status === "accepted" &&
+          booking.payment_status !== "paid" && (
+            <button
+              onClick={onPay}
+              className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
+            >
+              Payer maintenant
+            </button>
+          )}
+      </div>
 
       {mode === "driver" && (
         <p className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-600">
