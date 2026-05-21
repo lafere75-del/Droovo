@@ -153,13 +153,6 @@ export default function DashboardPage() {
           />
 
           <ActionCard
-            icon={Package}
-            title="Propositions"
-            text="Voir les transporteurs intéressés par mes colis."
-            href="/dashboard/propositions"
-          />
-
-          <ActionCard
             icon={FileCheck2}
             title="Vérification d’identité"
             text="Ajoutez votre pièce d’identité, un selfie et un RIB."
