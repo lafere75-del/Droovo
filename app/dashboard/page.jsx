@@ -103,9 +103,20 @@ export default function DashboardPage() {
         )}
 
         <section className="mt-6 grid gap-5 md:grid-cols-4">
-          <Stat icon={Package} label="Mes colis" value={loading ? "..." : packages.length} />
-          <Stat icon={Car} label="Mes trajets" value={loading ? "..." : trips.length} />
+          <Stat
+            icon={Package}
+            label="Mes colis"
+            value={loading ? "..." : packages.length}
+          />
+
+          <Stat
+            icon={Car}
+            label="Mes trajets"
+            value={loading ? "..." : trips.length}
+          />
+
           <Stat icon={CreditCard} label="Paiements" value="0 €" />
+
           <Stat icon={BadgeCheck} label="Statut" value="Vérifié" />
         </section>
 
@@ -124,6 +135,13 @@ export default function DashboardPage() {
             text="Proposer un trajet et recevoir des demandes de transport."
             href="/dashboard/declarer-trajet"
             locked={identityStatus !== "verified"}
+          />
+
+          <ActionCard
+            icon={Car}
+            title="Mes trajets"
+            text="Voir mes trajets publiés et les colis compatibles."
+            href="/dashboard/mes-trajets"
           />
 
           <ActionCard
@@ -163,7 +181,7 @@ export default function DashboardPage() {
               trips.slice(0, 3).map((trip) => (
                 <Row
                   key={trip.id}
-                  title={`${trip.from_city} → ${trip.to_city}`}
+                  title={`${trip.departure_city} → ${trip.arrival_city}`}
                   text={`Date : ${
                     trip.trip_date
                       ? new Date(trip.trip_date).toLocaleDateString("fr-FR")
@@ -213,6 +231,7 @@ function ActionCard({ icon: Icon, title, text, href, locked }) {
       </div>
 
       <h3 className="mt-5 text-xl font-black">{title}</h3>
+
       <p className="mt-2 min-h-[48px] text-slate-600">{text}</p>
 
       {locked ? (
@@ -238,6 +257,7 @@ function Panel({ title, children }) {
   return (
     <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
       <h2 className="text-xl font-black text-slate-950">{title}</h2>
+
       <div className="mt-5 grid gap-3">{children}</div>
     </div>
   );
@@ -248,8 +268,10 @@ function Row({ title, text, tag }) {
     <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
       <div>
         <p className="font-black text-slate-950">{title}</p>
+
         <p className="mt-1 text-sm text-slate-600">{text}</p>
       </div>
+
       <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
         {tag}
       </span>
