@@ -8,6 +8,18 @@ export default function PaiementsPage() {
   const [driverBookings, setDriverBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [showRibForm, setShowRibForm] = useState(false);
+
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardSaved, setCardSaved] = useState(false);
+
+  const [iban, setIban] = useState("");
+  const [ribName, setRibName] = useState("");
+  const [ribSaved, setRibSaved] = useState(false);
+
   useEffect(() => {
     loadPayments();
   }, []);
@@ -47,6 +59,26 @@ export default function PaiementsPage() {
     setSenderBookings(senderData || []);
     setDriverBookings(driverData || []);
     setLoading(false);
+  }
+
+  function saveCard() {
+    if (!cardName.trim() || !cardNumber.trim() || !cardExpiry.trim()) {
+      alert("Complète les informations de la carte.");
+      return;
+    }
+
+    setCardSaved(true);
+    setShowCardForm(false);
+  }
+
+  function saveRib() {
+    if (!ribName.trim() || !iban.trim()) {
+      alert("Complète le titulaire et l’IBAN.");
+      return;
+    }
+
+    setRibSaved(true);
+    setShowRibForm(false);
   }
 
   async function simulatePayment(booking) {
@@ -108,19 +140,76 @@ export default function PaiementsPage() {
             </p>
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-              <p className="font-black text-slate-900">
-                Aucune carte enregistrée
-              </p>
-
-              <p className="mt-1 text-sm text-slate-500">
-                La carte sera gérée par Stripe. Droovo ne stocke pas les numéros
-                de carte.
-              </p>
+              {cardSaved ? (
+                <>
+                  <p className="font-black text-slate-900">
+                    Carte enregistrée
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Carte terminant par {cardNumber.slice(-4)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-black text-slate-900">
+                    Aucune carte enregistrée
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    La carte sera gérée par Stripe. Droovo ne stocke pas les numéros de carte.
+                  </p>
+                </>
+              )}
             </div>
 
-            <button className="mt-6 rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700">
-              Ajouter une carte bancaire
-            </button>
+            {showCardForm && (
+              <div className="mt-5 space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+                <input
+                  value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                  placeholder="Nom sur la carte"
+                  className="w-full rounded-xl border border-emerald-100 px-4 py-3 text-sm outline-none"
+                />
+
+                <input
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(e.target.value)}
+                  placeholder="Numéro de carte"
+                  className="w-full rounded-xl border border-emerald-100 px-4 py-3 text-sm outline-none"
+                />
+
+                <input
+                  value={cardExpiry}
+                  onChange={(e) => setCardExpiry(e.target.value)}
+                  placeholder="Expiration MM/AA"
+                  className="w-full rounded-xl border border-emerald-100 px-4 py-3 text-sm outline-none"
+                />
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={saveCard}
+                    className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
+                  >
+                    Enregistrer la carte
+                  </button>
+
+                  <button
+                    onClick={() => setShowCardForm(false)}
+                    className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-700"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!showCardForm && (
+              <button
+                onClick={() => setShowCardForm(true)}
+                className="mt-6 rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
+              >
+                {cardSaved ? "Modifier la carte" : "Ajouter une carte bancaire"}
+              </button>
+            )}
           </div>
 
           <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
@@ -133,18 +222,69 @@ export default function PaiementsPage() {
             </p>
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-              <p className="font-black text-slate-900">
-                RIB transporteur
-              </p>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Les versements seront ensuite sécurisés avec Stripe Connect.
-              </p>
+              {ribSaved ? (
+                <>
+                  <p className="font-black text-slate-900">
+                    RIB enregistré
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    IBAN terminant par {iban.slice(-4)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-black text-slate-900">
+                    Aucun RIB enregistré
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Les versements seront ensuite sécurisés avec Stripe Connect.
+                  </p>
+                </>
+              )}
             </div>
 
-            <button className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800">
-              Ajouter ou modifier mon RIB
-            </button>
+            {showRibForm && (
+              <div className="mt-5 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <input
+                  value={ribName}
+                  onChange={(e) => setRibName(e.target.value)}
+                  placeholder="Titulaire du compte"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                />
+
+                <input
+                  value={iban}
+                  onChange={(e) => setIban(e.target.value)}
+                  placeholder="IBAN"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                />
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={saveRib}
+                    className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800"
+                  >
+                    Enregistrer le RIB
+                  </button>
+
+                  <button
+                    onClick={() => setShowRibForm(false)}
+                    className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-700"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!showRibForm && (
+              <button
+                onClick={() => setShowRibForm(true)}
+                className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800"
+              >
+                {ribSaved ? "Modifier mon RIB" : "Ajouter ou modifier mon RIB"}
+              </button>
+            )}
           </div>
         </section>
 
