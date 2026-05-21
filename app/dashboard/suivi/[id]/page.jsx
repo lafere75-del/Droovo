@@ -1,30 +1,101 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { supabase } from "../../../../lib/supabaseClient";
 
-export default async function SuiviPage({ params }) {
+export default function SuiviPage({ params }) {
   const { id } = params;
 
-  const { data: booking, error } = await supabase
-    .from("bookings")
-    .select(`
-      *,
-      packages (*),
-      trips (*)
-    `)
-    .eq("id", id)
-    .maybeSingle();
+  const [booking, setBooking] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const { data: events = [] } = await supabase
-    .from("tracking_events")
-    .select("*")
-    .eq("booking_id", id)
-    .order("created_at", { ascending: true });
+  useEffect(() => {
+    loadTracking();
+  }, []);
 
-  if (error || !booking) {
+  async function loadTracking() {
+    setLoading(true);
+
+    const { data: bookingData, error } = await supabase
+      .from("bookings")
+      .select(`
+        *,
+        packages (*),
+        trips (*)
+      `)
+      .eq("id", id)
+      .maybeSingle();
+
+    const { data: eventsData = [] } = await supabase
+      .from("tracking_events")
+      .select("*")
+      .eq("booking_id", id)
+      .order("created_at", { ascending: true });
+
+    if (error || !bookingData) {
+      setBooking(null);
+      setEvents([]);
+    } else {
+      setBooking(bookingData);
+      setEvents(eventsData || []);
+    }
+
+    setLoading(false);
+  }
+
+  async function updateTracking(status, message) {
+    setActionLoading(true);
+
+    const updatePayload = {
+      tracking_status: status,
+    };
+
+    if (status === "picked_up") {
+      updatePayload.picked_up_at = new Date().toISOString();
+    }
+
+    if (status === "delivered") {
+      updatePayload.delivered_at = new Date().toISOString();
+      updatePayload.status = "delivered";
+    }
+
+    const { error } = await supabase
+      .from("bookings")
+      .update(updatePayload)
+      .eq("id", id);
+
+    if (error) {
+      alert("Erreur mise à jour : " + error.message);
+      setActionLoading(false);
+      return;
+    }
+
+    await supabase.from("tracking_events").insert({
+      booking_id: id,
+      status,
+      message,
+    });
+
+    await loadTracking();
+    setActionLoading(false);
+  }
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#F4F7F5] p-10">
+        <p className="text-xl font-black">Chargement...</p>
+      </main>
+    );
+  }
+
+  if (!booking) {
     return (
       <main className="min-h-screen bg-[#F4F7F5] p-8">
-        <Link href="/dashboard" className="font-bold text-emerald-700">
-          ← Retour
+        <Link href="/dashboard/suivis" className="font-bold text-emerald-700">
+          ← Retour aux suivis
         </Link>
 
         <div className="mt-8 rounded-[2rem] bg-white p-8">
@@ -43,10 +114,10 @@ export default async function SuiviPage({ params }) {
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-10">
       <div className="mx-auto max-w-5xl">
         <Link
-          href="/dashboard"
+          href="/dashboard/suivis"
           className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
         >
-          ← Retour dashboard
+          ← Retour aux suivis
         </Link>
 
         <section className="mt-8 rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
@@ -75,22 +146,92 @@ export default async function SuiviPage({ params }) {
           <div className="mt-8 grid gap-5 md:grid-cols-2">
             <Info
               label="Expéditeur"
-              value={booking.sender_id ? booking.sender_id.slice(0, 8) + "..." : null}
+              value={
+                booking.sender_id
+                  ? booking.sender_id.slice(0, 8) + "..."
+                  : null
+              }
             />
+
             <Info
               label="Transporteur"
-              value={booking.driver_id ? booking.driver_id.slice(0, 8) + "..." : null}
+              value={
+                booking.driver_id
+                  ? booking.driver_id.slice(0, 8) + "..."
+                  : null
+              }
             />
+
             <Info label="Paiement" value={booking.payment_status || "pending"} />
             <Info label="Réservation" value={booking.status || "pending"} />
+
             <Info
               label="Prix"
-              value={booking.packages?.price ? `${booking.packages.price} €` : null}
+              value={
+                booking.packages?.price ? `${booking.packages.price} €` : null
+              }
             />
+
             <Info
               label="Date souhaitée"
               value={formatDate(booking.packages?.desired_date)}
             />
+
+            <Info
+              label="Récupéré le"
+              value={formatDateTime(booking.picked_up_at)}
+            />
+
+            <Info
+              label="Livré le"
+              value={formatDateTime(booking.delivered_at)}
+            />
+          </div>
+
+          <div className="mt-8 rounded-2xl bg-slate-50 p-5">
+            <h2 className="text-xl font-black text-slate-950">
+              Mettre à jour le suivi
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-600">
+              Ces actions permettent d’informer l’expéditeur de l’avancement de
+              la livraison.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                disabled={actionLoading || currentStatus === "picked_up"}
+                onClick={() =>
+                  updateTracking("picked_up", "Le colis a été récupéré.")
+                }
+                className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                Colis récupéré
+              </button>
+
+              <button
+                disabled={actionLoading || currentStatus === "in_transit"}
+                onClick={() =>
+                  updateTracking(
+                    "in_transit",
+                    "Le colis est en cours de livraison."
+                  )
+                }
+                className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                En cours de livraison
+              </button>
+
+              <button
+                disabled={actionLoading || currentStatus === "delivered"}
+                onClick={() =>
+                  updateTracking("delivered", "Le colis a été livré.")
+                }
+                className="rounded-full bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                Livré
+              </button>
+            </div>
           </div>
         </section>
 
