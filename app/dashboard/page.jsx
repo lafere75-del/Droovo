@@ -121,6 +121,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+
           <ActionCard
             icon={Package}
             title="Envoyer un colis"
@@ -152,6 +153,13 @@ export default function DashboardPage() {
           />
 
           <ActionCard
+            icon={Package}
+            title="Propositions"
+            text="Voir les transporteurs intéressés par mes colis."
+            href="/dashboard/propositions"
+          />
+
+          <ActionCard
             icon={FileCheck2}
             title="Vérification d’identité"
             text="Ajoutez votre pièce d’identité, un selfie et un RIB."
@@ -178,6 +186,7 @@ export default function DashboardPage() {
             text="Modifier mes informations personnelles."
             href="/dashboard/profil"
           />
+
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
