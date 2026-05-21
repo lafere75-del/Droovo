@@ -7,6 +7,7 @@ export default function MesColisPage() {
   const [packages, setPackages] = useState([]);
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -19,7 +20,10 @@ export default function MesColisPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const { data: userPackages } = await supabase
       .from("packages")
@@ -30,7 +34,8 @@ export default function MesColisPage() {
     const { data: allTrips } = await supabase
       .from("trips")
       .select("*")
-      .eq("status", "active");
+      .eq("status", "active")
+      .neq("user_id", user.id);
 
     setPackages(userPackages || []);
     setTrips(allTrips || []);
@@ -41,13 +46,54 @@ export default function MesColisPage() {
   function getCompatibleTrips(pkg) {
     return trips.filter((trip) => {
       return (
-        trip.from_city?.toLowerCase().trim() ===
+        trip.departure_city?.toLowerCase().trim() ===
           pkg.departure_city?.toLowerCase().trim() &&
-        trip.to_city?.toLowerCase().trim() ===
+        trip.arrival_city?.toLowerCase().trim() ===
           pkg.arrival_city?.toLowerCase().trim() &&
+        trip.trip_date === pkg.desired_date &&
         Number(trip.available_weight) >= Number(pkg.weight)
       );
     });
+  }
+
+  async function handleBookTrip(pkg, trip) {
+    setBookingLoading(true);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert("Vous devez être connecté.");
+        return;
+      }
+
+      const { error } = await supabase.from("bookings").insert({
+        package_id: pkg.id,
+        trip_id: trip.id,
+        sender_id: user.id,
+        driver_id: trip.user_id,
+        status: "pending",
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      await supabase
+        .from("packages")
+        .update({ status: "reserved" })
+        .eq("id", pkg.id);
+
+      alert("Demande de réservation envoyée au livreur.");
+
+      await loadData();
+    } catch (error) {
+      alert("Erreur : " + error.message);
+    }
+
+    setBookingLoading(false);
   }
 
   if (loading) {
@@ -61,7 +107,6 @@ export default function MesColisPage() {
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-10">
       <div className="mx-auto max-w-6xl">
-
         <div className="mb-8">
           <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
             Mes colis
@@ -70,10 +115,13 @@ export default function MesColisPage() {
           <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
             Colis publiés
           </h1>
+
+          <p className="mt-2 text-slate-600">
+            Retrouvez vos colis et réservez un trajet compatible.
+          </p>
         </div>
 
         <div className="grid gap-6">
-
           {packages.length === 0 && (
             <div className="rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-emerald-100">
               <p className="text-lg font-bold text-slate-700">
@@ -90,9 +138,7 @@ export default function MesColisPage() {
                 key={pkg.id}
                 className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100"
               >
-
                 <div className="flex flex-wrap items-start justify-between gap-4">
-
                   <div>
                     <h2 className="text-2xl font-black text-slate-950">
                       {pkg.title}
@@ -103,6 +149,13 @@ export default function MesColisPage() {
                     </p>
 
                     <p className="mt-2 text-slate-500">
+                      Date souhaitée :{" "}
+                      {pkg.desired_date
+                        ? new Date(pkg.desired_date).toLocaleDateString("fr-FR")
+                        : "Non renseignée"}
+                    </p>
+
+                    <p className="mt-2 text-slate-500">
                       {pkg.weight} kg • {pkg.price} €
                     </p>
                   </div>
@@ -110,11 +163,9 @@ export default function MesColisPage() {
                   <div className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-700">
                     {compatibleTrips.length} trajet(s) compatible(s)
                   </div>
-
                 </div>
 
                 <div className="mt-6 grid gap-4">
-
                   {compatibleTrips.length === 0 && (
                     <div className="rounded-2xl bg-slate-100 p-5 text-slate-600">
                       Aucun trajet compatible pour le moment.
@@ -126,10 +177,9 @@ export default function MesColisPage() {
                       key={trip.id}
                       className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-100 p-5"
                     >
-
                       <div>
                         <p className="font-black text-slate-950">
-                          {trip.from_city} → {trip.to_city}
+                          {trip.departure_city} → {trip.arrival_city}
                         </p>
 
                         <p className="mt-1 text-sm text-slate-500">
@@ -137,29 +187,30 @@ export default function MesColisPage() {
                         </p>
 
                         <p className="mt-1 text-sm text-slate-500">
-                          Date :
-                          {" "}
+                          Date :{" "}
                           {trip.trip_date
-                            ? new Date(trip.trip_date).toLocaleDateString("fr-FR")
+                            ? new Date(trip.trip_date).toLocaleDateString(
+                                "fr-FR"
+                              )
                             : "Date non renseignée"}
                         </p>
                       </div>
 
                       <button
-                        className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
+                        disabled={bookingLoading}
+                        onClick={() => handleBookTrip(pkg, trip)}
+                        className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60"
                       >
-                        Contacter
+                        {bookingLoading
+                          ? "Réservation..."
+                          : "Réserver ce trajet"}
                       </button>
-
                     </div>
                   ))}
-
                 </div>
-
               </div>
             );
           })}
-
         </div>
       </div>
     </main>
