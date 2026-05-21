@@ -114,6 +114,15 @@ export default function PaiementsPage() {
 
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-10">
+      <div className="mx-auto mb-6 max-w-7xl">
+        <button
+          onClick={() => window.history.back()}
+          className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+        >
+          ← Retour
+        </button>
+      </div>
+
       <div className="mx-auto max-w-7xl">
         <div className="mb-10">
           <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
@@ -145,6 +154,7 @@ export default function PaiementsPage() {
                   <p className="font-black text-slate-900">
                     Carte enregistrée
                   </p>
+
                   <p className="mt-1 text-sm text-slate-500">
                     Carte terminant par {cardNumber.slice(-4)}
                   </p>
@@ -154,6 +164,7 @@ export default function PaiementsPage() {
                   <p className="font-black text-slate-900">
                     Aucune carte enregistrée
                   </p>
+
                   <p className="mt-1 text-sm text-slate-500">
                     La carte sera gérée par Stripe. Droovo ne stocke pas les numéros de carte.
                   </p>
@@ -227,6 +238,7 @@ export default function PaiementsPage() {
                   <p className="font-black text-slate-900">
                     RIB enregistré
                   </p>
+
                   <p className="mt-1 text-sm text-slate-500">
                     IBAN terminant par {iban.slice(-4)}
                   </p>
@@ -236,6 +248,7 @@ export default function PaiementsPage() {
                   <p className="font-black text-slate-900">
                     Aucun RIB enregistré
                   </p>
+
                   <p className="mt-1 text-sm text-slate-500">
                     Les versements seront ensuite sécurisés avec Stripe Connect.
                   </p>
