@@ -14,6 +14,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminPage({ searchParams }) {
   const status = searchParams?.status || "all";
   const q = searchParams?.q || "";
@@ -45,7 +48,7 @@ export default async function AdminPage({ searchParams }) {
   const { count: pendingUsers = 0 } = await supabase
     .from("profiles")
     .select("*", { count: "exact", head: true })
-    .eq("identity_status", "pending");
+    .or("identity_status.eq.pending,identity_status.is.null");
 
   const { count: verifiedUsers = 0 } = await supabase
     .from("profiles")
@@ -81,9 +84,9 @@ export default async function AdminPage({ searchParams }) {
         </header>
 
         <section className="mt-6 grid gap-5 md:grid-cols-4">
-          <Stat icon={Users} label="Utilisateurs" value={totalUsers} />
-          <Stat icon={ShieldAlert} label="À vérifier" value={pendingUsers} warning />
-          <Stat icon={BadgeCheck} label="Comptes validés" value={verifiedUsers} />
+          <Stat icon={Users} label="Utilisateurs" value={totalUsers || 0} />
+          <Stat icon={ShieldAlert} label="À vérifier" value={pendingUsers || 0} warning />
+          <Stat icon={BadgeCheck} label="Comptes validés" value={verifiedUsers || 0} />
           <Stat icon={CreditCard} label="Commissions" value="0 €" />
         </section>
 
@@ -137,9 +140,9 @@ export default async function AdminPage({ searchParams }) {
             <div className="grid grid-cols-5 bg-slate-950 px-4 py-3 text-sm font-black text-white">
               <span>Utilisateur</span>
               <span>Email</span>
-              <span>Statut identité</span>
+              <span>Rôle</span>
               <span>Inscription</span>
-              <span>Action</span>
+              <span>Statut identité</span>
             </div>
 
             {profiles.length === 0 ? (
@@ -154,17 +157,19 @@ export default async function AdminPage({ searchParams }) {
                 >
                   <div>
                     <p className="font-black text-slate-950">
-                      {profile.fullname || "Nom non renseigné"}
+                      {profile.fullname || profile.first_name || "Nom non renseigné"}
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
-                      ID : {profile.id.slice(0, 8)}...
+                      ID : {profile.id?.slice(0, 8)}...
                     </p>
                   </div>
 
-                  <span className="text-slate-600">{profile.email}</span>
+                  <span className="text-slate-600">
+                    {profile.email || "Email non renseigné"}
+                  </span>
 
-                  <span>
-                    <Status status={profile.identity_status} />
+                  <span className="font-bold text-slate-700">
+                    {profile.role || "user"}
                   </span>
 
                   <span className="text-slate-500">
@@ -173,14 +178,9 @@ export default async function AdminPage({ searchParams }) {
                       : "-"}
                   </span>
 
-                  <div className="flex flex-wrap gap-2">
-                    <button className="rounded-full bg-emerald-100 px-3 py-2 text-xs font-black text-emerald-700">
-                      Voir
-                    </button>
-                    <button className="rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">
-                      Détail
-                    </button>
-                  </div>
+                  <span>
+                    <Status status={profile.identity_status || "pending"} />
+                  </span>
                 </div>
               ))
             )}
@@ -204,16 +204,16 @@ export default async function AdminPage({ searchParams }) {
 
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
           <Panel title="Comptes à vérifier" icon={ShieldAlert}>
-            {profiles.filter((p) => p.identity_status === "pending").length === 0 ? (
+            {profiles.filter((p) => !p.identity_status || p.identity_status === "pending").length === 0 ? (
               <Empty text="Aucun compte à vérifier sur cette page." />
             ) : (
               profiles
-                .filter((p) => p.identity_status === "pending")
+                .filter((p) => !p.identity_status || p.identity_status === "pending")
                 .map((profile) => (
                   <AdminRow
                     key={profile.id}
-                    title={profile.fullname || "Utilisateur"}
-                    text={`${profile.email} · pièce d’identité à contrôler`}
+                    title={profile.fullname || profile.email || "Utilisateur"}
+                    text={`${profile.email || "Email non renseigné"} · pièce d’identité à contrôler`}
                     tag="En attente"
                     warning
                   />
@@ -224,7 +224,7 @@ export default async function AdminPage({ searchParams }) {
           <Panel title="Alertes de gestion" icon={UserX}>
             <AdminRow
               title="Accès admin temporairement ouvert"
-              text="La protection par rôle a été retirée car elle bloquait la connexion. À sécuriser ensuite avec une méthode compatible Supabase côté client."
+              text="La protection par rôle a été retirée car elle bloquait la connexion. À sécuriser ensuite."
               tag="Important"
               warning
             />
@@ -294,11 +294,7 @@ function Status({ status }) {
   };
 
   return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-black ${
-        config[status] || config.pending
-      }`}
-    >
+    <span className={`rounded-full px-3 py-1 text-xs font-black ${config[status] || config.pending}`}>
       {label[status] || "À vérifier"}
     </span>
   );
@@ -313,9 +309,7 @@ function AdminRow({ title, text, tag, warning }) {
       </div>
       <span
         className={`rounded-full px-3 py-1 text-xs font-black ${
-          warning
-            ? "bg-amber-100 text-amber-700"
-            : "bg-emerald-100 text-emerald-700"
+          warning ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
         }`}
       >
         {tag}
@@ -344,10 +338,7 @@ function PageLink({ page, disabled, q, status, children }) {
   }
 
   return (
-    <Link
-      href={href}
-      className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white"
-    >
+    <Link href={href} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">
       {children}
     </Link>
   );
