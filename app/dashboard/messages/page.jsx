@@ -9,6 +9,28 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 );
 
+const demoConversation = {
+  id: "demo",
+  title: "Exemple de conversation",
+  subtitle: "Paris → Lyon · Colis moyen",
+  isDemo: true,
+};
+
+const demoMessages = [
+  {
+    id: "demo-1",
+    sender_type: "other",
+    content: "Bonjour, êtes-vous toujours disponible pour transporter le colis ?",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "demo-2",
+    sender_type: "me",
+    content: "Oui, le trajet est confirmé pour demain matin.",
+    created_at: new Date().toISOString(),
+  },
+];
+
 export default function MessagesPage() {
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -23,7 +45,9 @@ export default function MessagesPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedConversation?.id) {
+    if (selectedConversation?.id === "demo") {
+      setMessages(demoMessages);
+    } else if (selectedConversation?.id) {
       fetchMessages(selectedConversation.id);
     }
   }, [selectedConversation]);
@@ -38,9 +62,14 @@ export default function MessagesPage() {
 
     if (error) {
       console.error("Erreur conversations :", error);
-      setConversations([]);
+      setConversations([demoConversation]);
+      setSelectedConversation(demoConversation);
+    } else if (data && data.length > 0) {
+      setConversations(data);
+      setSelectedConversation(data[0]);
     } else {
-      setConversations(data || []);
+      setConversations([demoConversation]);
+      setSelectedConversation(demoConversation);
     }
 
     setLoading(false);
@@ -68,6 +97,20 @@ export default function MessagesPage() {
   async function handleSendMessage() {
     if (!newMessage.trim() || !selectedConversation?.id) return;
 
+    if (selectedConversation.id === "demo") {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `demo-${Date.now()}`,
+          sender_type: "me",
+          content: newMessage.trim(),
+          created_at: new Date().toISOString(),
+        },
+      ]);
+      setNewMessage("");
+      return;
+    }
+
     setSending(true);
 
     const { error } = await supabase.from("messages").insert([
@@ -90,7 +133,9 @@ export default function MessagesPage() {
   }
 
   function getTrajetLink(conversation) {
-    if (!conversation) return "/dashboard/mes-trajets";
+    if (!conversation || conversation.id === "demo") {
+      return "/dashboard/mes-trajets";
+    }
 
     if (conversation.trajet_id) {
       return `/dashboard/mes-trajets/${conversation.trajet_id}`;
@@ -130,16 +175,6 @@ export default function MessagesPage() {
 
             {loading ? (
               <p className="px-2 text-sm text-gray-500">Chargement...</p>
-            ) : conversations.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-200 p-5 text-center">
-                <p className="font-semibold text-gray-900">
-                  Aucune conversation
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Les conversations apparaîtront lorsqu’un échange sera créé
-                  autour d’un colis ou d’un trajet.
-                </p>
-              </div>
             ) : (
               <div className="space-y-3">
                 {conversations.map((conversation) => (
@@ -152,19 +187,35 @@ export default function MessagesPage() {
                         : "border-gray-100 bg-white hover:bg-gray-50"
                     }`}
                   >
-                    <p className="font-semibold">
-                      {conversation.title || "Conversation"}
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">
+                          {conversation.title || "Conversation"}
+                        </p>
 
-                    <p
-                      className={`mt-1 text-sm ${
-                        selectedConversation?.id === conversation.id
-                          ? "text-gray-300"
-                          : "text-gray-500"
-                      }`}
-                    >
-                      {conversation.subtitle || "Échange lié à une livraison"}
-                    </p>
+                        <p
+                          className={`mt-1 text-sm ${
+                            selectedConversation?.id === conversation.id
+                              ? "text-gray-300"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {conversation.subtitle || "Échange lié à une livraison"}
+                        </p>
+                      </div>
+
+                      {conversation.isDemo && (
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                            selectedConversation?.id === conversation.id
+                              ? "bg-white/20 text-white"
+                              : "bg-orange-100 text-orange-700"
+                          }`}
+                        >
+                          Démo
+                        </span>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -187,9 +238,17 @@ export default function MessagesPage() {
               <>
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-5">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-950">
-                      {selectedConversation.title || "Conversation"}
-                    </h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-gray-950">
+                        {selectedConversation.title || "Conversation"}
+                      </h2>
+
+                      {selectedConversation.isDemo && (
+                        <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">
+                          Conversation de test
+                        </span>
+                      )}
+                    </div>
 
                     <p className="mt-1 text-sm text-gray-500">
                       {selectedConversation.subtitle ||
@@ -204,6 +263,13 @@ export default function MessagesPage() {
                     Voir le trajet
                   </Link>
                 </div>
+
+                {selectedConversation.isDemo && (
+                  <div className="border-b border-orange-100 bg-orange-50 px-6 py-3 text-sm text-orange-800">
+                    Cette conversation est seulement un exemple. Elle disparaîtra
+                    automatiquement dès qu’une vraie conversation sera créée.
+                  </div>
+                )}
 
                 <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
                   {loadingMessages ? (
