@@ -1,92 +1,116 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function MessagesPage() {
-  const [selectedConversation, setSelectedConversation] = useState(1);
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  // Plus tard → connecté à Supabase
-  const conversations = [
-    {
-      id: 1,
-      name: "Thomas",
-      verified: true,
-      trajet: "Paris → Lyon",
-      unread: 2,
-      lastMessage: "Le colis sera remis demain matin.",
-      time: "12:42",
-      messages: [
-        {
-          id: 1,
-          sender: "Thomas",
-          text: "Bonjour, êtes-vous toujours disponible pour la livraison ?",
-          mine: false,
-          time: "11:20",
-        },
-        {
-          id: 2,
-          sender: "Moi",
-          text: "Oui, le trajet est confirmé.",
-          mine: true,
-          time: "11:35",
-        },
-        {
-          id: 3,
-          sender: "Thomas",
-          text: "Le colis sera remis demain matin.",
-          mine: false,
-          time: "12:42",
-        },
-      ],
-    },
+  useEffect(() => {
+    fetchConversations();
+  }, []);
 
-    {
-      id: 2,
-      name: "Sarah",
-      verified: false,
-      trajet: "Marseille → Nice",
-      unread: 0,
-      lastMessage: "Merci pour les informations.",
-      time: "Hier",
-      messages: [
-        {
-          id: 1,
-          sender: "Sarah",
-          text: "Merci pour les informations.",
-          mine: false,
-          time: "18:10",
-        },
-      ],
-    },
-  ];
+  useEffect(() => {
+    if (selectedConversation?.id) {
+      fetchMessages(selectedConversation.id);
+    }
+  }, [selectedConversation]);
 
-  const activeConversation = conversations.find(
-    (conv) => conv.id === selectedConversation
-  );
+  async function fetchConversations() {
+    setLoading(true);
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
+    const { data, error } = await supabase
+      .from("conversations")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    alert(
-      "Message envoyé localement. La connexion Supabase sera ajoutée ensuite."
-    );
+    if (error) {
+      console.error("Erreur conversations :", error);
+      setConversations([]);
+    } else {
+      setConversations(data || []);
+    }
 
-    setNewMessage("");
-  };
+    setLoading(false);
+  }
+
+  async function fetchMessages(conversationId) {
+    setLoadingMessages(true);
+
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Erreur messages :", error);
+      setMessages([]);
+    } else {
+      setMessages(data || []);
+    }
+
+    setLoadingMessages(false);
+  }
+
+  async function handleSendMessage() {
+    if (!newMessage.trim() || !selectedConversation?.id) return;
+
+    setSending(true);
+
+    const { error } = await supabase.from("messages").insert([
+      {
+        conversation_id: selectedConversation.id,
+        content: newMessage.trim(),
+        sender_type: "me",
+      },
+    ]);
+
+    if (error) {
+      console.error("Erreur envoi message :", error);
+      alert("Le message n’a pas pu être envoyé.");
+    } else {
+      setNewMessage("");
+      await fetchMessages(selectedConversation.id);
+    }
+
+    setSending(false);
+  }
+
+  function getTrajetLink(conversation) {
+    if (!conversation) return "/dashboard/mes-trajets";
+
+    if (conversation.trajet_id) {
+      return `/dashboard/mes-trajets/${conversation.trajet_id}`;
+    }
+
+    if (conversation.colis_id) {
+      return `/dashboard/mes-colis/${conversation.colis_id}`;
+    }
+
+    return "/dashboard/mes-trajets";
+  }
 
   return (
     <main className="min-h-screen bg-[#f6f7fb] p-4 md:p-6">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-950">
-              Messages
-            </h1>
-
+            <h1 className="text-3xl font-bold text-gray-950">Messages</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Échangez avec les expéditeurs et transporteurs.
+              Retrouvez vos échanges liés aux colis et aux trajets.
             </p>
           </div>
 
@@ -99,158 +123,150 @@ export default function MessagesPage() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
-          {/* Sidebar conversations */}
           <section className="rounded-[32px] bg-white p-4 shadow-sm">
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Rechercher une conversation..."
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none focus:border-black"
-              />
-            </div>
+            <h2 className="mb-4 px-2 text-lg font-bold text-gray-950">
+              Conversations
+            </h2>
 
-            <div className="space-y-3">
-              {conversations.map((conversation) => (
-                <button
-                  key={conversation.id}
-                  onClick={() =>
-                    setSelectedConversation(conversation.id)
-                  }
-                  className={`w-full rounded-2xl border p-4 text-left transition ${
-                    selectedConversation === conversation.id
-                      ? "border-black bg-black text-white"
-                      : "border-gray-100 bg-white hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold">
-                          {conversation.name}
-                        </p>
-
-                        {conversation.verified && (
-                          <span
-                            className={`rounded-full px-2 py-1 text-[10px] font-medium ${
-                              selectedConversation === conversation.id
-                                ? "bg-white/20 text-white"
-                                : "bg-green-100 text-green-700"
-                            }`}
-                          >
-                            Vérifié
-                          </span>
-                        )}
-                      </div>
-
-                      <p
-                        className={`mt-1 text-xs ${
-                          selectedConversation === conversation.id
-                            ? "text-gray-300"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {conversation.trajet}
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p
-                        className={`text-xs ${
-                          selectedConversation === conversation.id
-                            ? "text-gray-300"
-                            : "text-gray-400"
-                        }`}
-                      >
-                        {conversation.time}
-                      </p>
-
-                      {conversation.unread > 0 && (
-                        <div className="mt-2 flex justify-end">
-                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold text-white">
-                            {conversation.unread}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <p
-                    className={`mt-3 truncate text-sm ${
-                      selectedConversation === conversation.id
-                        ? "text-gray-200"
-                        : "text-gray-500"
+            {loading ? (
+              <p className="px-2 text-sm text-gray-500">Chargement...</p>
+            ) : conversations.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 p-5 text-center">
+                <p className="font-semibold text-gray-900">
+                  Aucune conversation
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Les conversations apparaîtront lorsqu’un échange sera créé
+                  autour d’un colis ou d’un trajet.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {conversations.map((conversation) => (
+                  <button
+                    key={conversation.id}
+                    onClick={() => setSelectedConversation(conversation)}
+                    className={`w-full rounded-2xl border p-4 text-left transition ${
+                      selectedConversation?.id === conversation.id
+                        ? "border-black bg-black text-white"
+                        : "border-gray-100 bg-white hover:bg-gray-50"
                     }`}
                   >
-                    {conversation.lastMessage}
-                  </p>
-                </button>
-              ))}
-            </div>
+                    <p className="font-semibold">
+                      {conversation.title || "Conversation"}
+                    </p>
+
+                    <p
+                      className={`mt-1 text-sm ${
+                        selectedConversation?.id === conversation.id
+                          ? "text-gray-300"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {conversation.subtitle || "Échange lié à une livraison"}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
 
-          {/* Chat */}
           <section className="flex h-[78vh] flex-col rounded-[32px] bg-white shadow-sm">
-            {activeConversation ? (
+            {!selectedConversation ? (
+              <div className="flex flex-1 items-center justify-center p-6 text-center">
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    Sélectionnez une conversation
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Vos messages apparaîtront ici.
+                  </p>
+                </div>
+              </div>
+            ) : (
               <>
-                <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-5">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-bold text-gray-950">
-                        {activeConversation.name}
-                      </h2>
-
-                      {activeConversation.verified && (
-                        <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
-                          Profil vérifié
-                        </span>
-                      )}
-                    </div>
+                    <h2 className="text-xl font-bold text-gray-950">
+                      {selectedConversation.title || "Conversation"}
+                    </h2>
 
                     <p className="mt-1 text-sm text-gray-500">
-                      Livraison liée au trajet :
-                      {" "}
-                      {activeConversation.trajet}
+                      {selectedConversation.subtitle ||
+                        "Discussion liée à une livraison"}
                     </p>
                   </div>
 
-                  <button className="rounded-2xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <Link
+                    href={getTrajetLink(selectedConversation)}
+                    className="rounded-2xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
                     Voir le trajet
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
-                  {activeConversation.messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${
-                        message.mine
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      <div
-                        className={`max-w-[75%] rounded-3xl px-5 py-4 ${
-                          message.mine
-                            ? "bg-black text-white"
-                            : "bg-gray-100 text-gray-900"
-                        }`}
-                      >
-                        <p className="text-sm leading-6">
-                          {message.text}
+                  {loadingMessages ? (
+                    <div className="flex h-full items-center justify-center">
+                      <p className="text-sm text-gray-500">
+                        Chargement des messages...
+                      </p>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="flex h-full items-center justify-center text-center">
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          Aucun message
                         </p>
-
-                        <p
-                          className={`mt-2 text-[11px] ${
-                            message.mine
-                              ? "text-gray-300"
-                              : "text-gray-500"
-                          }`}
-                        >
-                          {message.time}
+                        <p className="mt-1 text-sm text-gray-500">
+                          Envoyez le premier message.
                         </p>
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          message.sender_type === "me"
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[75%] rounded-3xl px-5 py-4 ${
+                            message.sender_type === "me"
+                              ? "bg-black text-white"
+                              : "bg-gray-100 text-gray-900"
+                          }`}
+                        >
+                          <p className="text-sm leading-6">
+                            {message.content}
+                          </p>
+
+                          {message.created_at && (
+                            <p
+                              className={`mt-2 text-[11px] ${
+                                message.sender_type === "me"
+                                  ? "text-gray-300"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              {new Date(message.created_at).toLocaleString(
+                                "fr-FR",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 <div className="border-t border-gray-100 p-5">
@@ -258,32 +274,29 @@ export default function MessagesPage() {
                     <input
                       type="text"
                       value={newMessage}
-                      onChange={(e) =>
-                        setNewMessage(e.target.value)
-                      }
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSendMessage();
+                      }}
                       placeholder="Écrire un message..."
                       className="flex-1 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm outline-none focus:border-black"
                     />
 
                     <button
                       onClick={handleSendMessage}
-                      className="rounded-2xl bg-black px-5 py-4 text-sm font-semibold text-white hover:opacity-90"
+                      disabled={sending || !newMessage.trim()}
+                      className="rounded-2xl bg-black px-5 py-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Envoyer
+                      {sending ? "Envoi..." : "Envoyer"}
                     </button>
                   </div>
 
                   <p className="mt-3 text-xs text-gray-500">
-                    Ne partagez jamais d’informations sensibles ou de paiement en dehors de Droovo.
+                    Ne partagez pas de paiement ou d’informations sensibles en
+                    dehors de Droovo.
                   </p>
                 </div>
               </>
-            ) : (
-              <div className="flex flex-1 items-center justify-center">
-                <p className="text-gray-500">
-                  Sélectionnez une conversation.
-                </p>
-              </div>
             )}
           </section>
         </div>
