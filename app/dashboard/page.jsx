@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Package,
   ShieldAlert,
+  Star,
   UserRound,
 } from "lucide-react";
 
@@ -99,7 +100,9 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-8 text-slate-950">
       <div className="mx-auto max-w-7xl">
+
         <header className="flex items-center justify-between rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
+
           <div>
             <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
               Espace utilisateur
@@ -115,6 +118,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+
             <Link
               href="/dashboard/notifications"
               className="relative rounded-full bg-white p-3 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
@@ -134,15 +138,20 @@ export default function DashboardPage() {
             >
               Retour accueil
             </Link>
+
           </div>
+
         </header>
 
         {identityStatus !== "verified" && (
           <section className="mt-6 rounded-[2rem] bg-amber-50 p-6 ring-1 ring-amber-100">
+
             <div className="flex items-start gap-4">
+
               <ShieldAlert className="mt-1 text-amber-700" />
 
               <div>
+
                 <h2 className="text-xl font-black text-slate-950">
                   Vérification d’identité requise
                 </h2>
@@ -158,12 +167,14 @@ export default function DashboardPage() {
                 >
                   Vérifier mon identité
                 </Link>
+
               </div>
             </div>
           </section>
         )}
 
         <section className="mt-6 grid gap-5 md:grid-cols-4">
+
           <Stat
             icon={Package}
             label="Mes colis"
@@ -176,12 +187,22 @@ export default function DashboardPage() {
             value={loading ? "..." : trips.length}
           />
 
-          <Stat icon={CreditCard} label="Paiements" value="0 €" />
+          <Stat
+            icon={CreditCard}
+            label="Paiements"
+            value="0 €"
+          />
 
-          <Stat icon={BadgeCheck} label="Statut" value="Vérifié" />
+          <Stat
+            icon={BadgeCheck}
+            label="Statut"
+            value="Vérifié"
+          />
+
         </section>
 
         <section className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+
           <ActionCard
             icon={Package}
             title="Envoyer un colis"
@@ -248,15 +269,25 @@ export default function DashboardPage() {
           />
 
           <ActionCard
+            icon={Star}
+            title="Avis & notes"
+            text="Consulter et laisser un avis après une livraison."
+            href="/dashboard/reviews"
+          />
+
+          <ActionCard
             icon={UserRound}
             title="Mon profil"
             text="Modifier mes informations personnelles."
             href="/dashboard/profil"
           />
+
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
+
           <Panel title="Mes derniers trajets">
+
             {trips.length === 0 ? (
               <Empty text="Aucun trajet déclaré pour le moment." />
             ) : (
@@ -273,9 +304,11 @@ export default function DashboardPage() {
                 />
               ))
             )}
+
           </Panel>
 
           <Panel title="Mes derniers colis">
+
             {packages.length === 0 ? (
               <Empty text="Aucun colis publié pour le moment." />
             ) : (
@@ -288,8 +321,11 @@ export default function DashboardPage() {
                 />
               ))
             )}
+
           </Panel>
+
         </section>
+
       </div>
     </main>
   );
@@ -298,11 +334,17 @@ export default function DashboardPage() {
 function Stat({ icon: Icon, label, value }) {
   return (
     <div className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-emerald-100">
+
       <Icon className="text-emerald-700" size={24} />
 
-      <p className="mt-4 text-sm font-bold text-slate-500">{label}</p>
+      <p className="mt-4 text-sm font-bold text-slate-500">
+        {label}
+      </p>
 
-      <p className="mt-1 text-3xl font-black text-slate-950">{value}</p>
+      <p className="mt-1 text-3xl font-black text-slate-950">
+        {value}
+      </p>
+
     </div>
   );
 }
@@ -310,13 +352,18 @@ function Stat({ icon: Icon, label, value }) {
 function ActionCard({ icon: Icon, title, text, href, locked }) {
   return (
     <div className="rounded-[1.75rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
+
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
         <Icon size={24} />
       </div>
 
-      <h3 className="mt-5 text-xl font-black">{title}</h3>
+      <h3 className="mt-5 text-xl font-black">
+        {title}
+      </h3>
 
-      <p className="mt-2 min-h-[48px] text-slate-600">{text}</p>
+      <p className="mt-2 min-h-[48px] text-slate-600">
+        {text}
+      </p>
 
       {locked ? (
         <Link
@@ -333,6 +380,7 @@ function ActionCard({ icon: Icon, title, text, href, locked }) {
           Ouvrir
         </Link>
       )}
+
     </div>
   );
 }
@@ -340,9 +388,15 @@ function ActionCard({ icon: Icon, title, text, href, locked }) {
 function Panel({ title, children }) {
   return (
     <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
-      <h2 className="text-xl font-black text-slate-950">{title}</h2>
 
-      <div className="mt-5 grid gap-3">{children}</div>
+      <h2 className="text-xl font-black text-slate-950">
+        {title}
+      </h2>
+
+      <div className="mt-5 grid gap-3">
+        {children}
+      </div>
+
     </div>
   );
 }
@@ -350,15 +404,23 @@ function Panel({ title, children }) {
 function Row({ title, text, tag }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
-      <div>
-        <p className="font-black text-slate-950">{title}</p>
 
-        <p className="mt-1 text-sm text-slate-600">{text}</p>
+      <div>
+
+        <p className="font-black text-slate-950">
+          {title}
+        </p>
+
+        <p className="mt-1 text-sm text-slate-600">
+          {text}
+        </p>
+
       </div>
 
       <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
         {tag}
       </span>
+
     </div>
   );
 }
