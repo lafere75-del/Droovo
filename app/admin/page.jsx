@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
 import {
@@ -18,6 +19,24 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AdminPage({ searchParams }) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const { data: adminProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", session.user.id)
+    .maybeSingle();
+
+  if (adminProfile?.role !== "admin") {
+    redirect("/dashboard");
+  }
+
   const status = searchParams?.status || "all";
   const q = searchParams?.q || "";
   const page = Number(searchParams?.page || 1);
@@ -223,10 +242,9 @@ export default async function AdminPage({ searchParams }) {
 
           <Panel title="Alertes de gestion" icon={UserX}>
             <AdminRow
-              title="Accès admin temporairement ouvert"
-              text="La protection par rôle a été retirée car elle bloquait la connexion. À sécuriser ensuite."
-              tag="Important"
-              warning
+              title="Accès admin sécurisé"
+              text="La page admin vérifie maintenant le rôle admin depuis Supabase."
+              tag="Sécurisé"
             />
             <AdminRow
               title="Paiements non connectés"
