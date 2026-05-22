@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
-import { supabase } from "../../../../lib/supabaseClient";
+import { supabase } from "../../../lib/supabaseClient";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
@@ -22,10 +22,7 @@ export default function NotificationsPage() {
           table: "notifications",
         },
         (payload) => {
-          setNotifications((prev) => [
-            payload.new,
-            ...prev,
-          ]);
+          setNotifications((prev) => [payload.new, ...prev]);
         }
       )
       .subscribe();
@@ -69,9 +66,7 @@ export default function NotificationsPage() {
 
     setNotifications((prev) =>
       prev.map((notif) =>
-        notif.id === id
-          ? { ...notif, is_read: true }
-          : notif
+        notif.id === id ? { ...notif, is_read: true } : notif
       )
     );
   }
@@ -100,16 +95,11 @@ export default function NotificationsPage() {
 
         {loading ? (
           <div className="rounded-[2rem] bg-white p-8">
-            <p className="font-black text-slate-600">
-              Chargement...
-            </p>
+            <p className="font-black text-slate-600">Chargement...</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="rounded-[2rem] bg-white p-10 text-center shadow-sm ring-1 ring-emerald-100">
-            <Bell
-              size={42}
-              className="mx-auto text-emerald-600"
-            />
+            <Bell size={42} className="mx-auto text-emerald-600" />
 
             <h2 className="mt-5 text-2xl font-black text-slate-950">
               Aucune notification
@@ -142,9 +132,7 @@ export default function NotificationsPage() {
                     </p>
 
                     <p className="mt-4 text-xs font-bold text-slate-400">
-                      {new Date(
-                        notif.created_at
-                      ).toLocaleString("fr-FR")}
+                      {new Date(notif.created_at).toLocaleString("fr-FR")}
                     </p>
                   </div>
 
