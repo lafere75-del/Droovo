@@ -246,7 +246,6 @@ export default function PublierColisPage() {
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     onChange={handleImageChange}
                     className="hidden"
                   />
