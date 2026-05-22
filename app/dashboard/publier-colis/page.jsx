@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Camera, ImagePlus } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 
 export default function PublierColisPage() {
@@ -13,6 +14,10 @@ export default function PublierColisPage() {
   const [toCity, setToCity] = useState("");
   const [desiredDate, setDesiredDate] = useState("");
   const [weight, setWeight] = useState(3);
+
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   const pricing = useMemo(() => {
@@ -43,6 +48,40 @@ export default function PublierColisPage() {
     };
   }, [weight]);
 
+  async function handleImageChange(e) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setImageFile(file);
+
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+  }
+
+  async function uploadImage(userId) {
+    if (!imageFile) return null;
+
+    const fileExt = imageFile.name.split(".").pop();
+
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("package-images")
+      .upload(fileName, imageFile);
+
+    if (error) {
+      alert("Erreur upload image : " + error.message);
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from("package-images")
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
@@ -57,17 +96,24 @@ export default function PublierColisPage() {
       return;
     }
 
+    const imageUrl = await uploadImage(user.id);
+
     const { error } = await supabase.from("packages").insert({
       user_id: user.id,
+
       title,
       description,
 
       departure_city: fromCity,
       arrival_city: toCity,
+
       desired_date: desiredDate,
 
       weight,
       price: pricing.droovoPrice,
+
+      image_url: imageUrl,
+
       status: "active",
     });
 
@@ -79,6 +125,7 @@ export default function PublierColisPage() {
     }
 
     alert("Colis publié avec succès.");
+
     router.push("/dashboard");
   }
 
@@ -90,9 +137,11 @@ export default function PublierColisPage() {
             <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
               Espace utilisateur
             </p>
+
             <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
               Publier un colis
             </h1>
+
             <p className="mt-2 text-slate-600">
               Renseignez votre colis. Droovo calcule automatiquement le prix.
             </p>
@@ -163,6 +212,7 @@ export default function PublierColisPage() {
                 <label className="mb-2 block text-sm font-black text-slate-700">
                   Poids du colis : {weight} kg
                 </label>
+
                 <input
                   type="range"
                   min="1"
@@ -172,6 +222,43 @@ export default function PublierColisPage() {
                   onChange={(e) => setWeight(Number(e.target.value))}
                   className="w-full accent-emerald-600"
                 />
+              </div>
+
+              <div>
+                <label className="mb-3 block text-sm font-black text-slate-700">
+                  Photo du colis
+                </label>
+
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-emerald-200 bg-emerald-50 p-8 text-center transition hover:bg-emerald-100">
+                  <div className="flex items-center gap-3">
+                    <Camera className="text-emerald-700" />
+                    <ImagePlus className="text-emerald-700" />
+                  </div>
+
+                  <p className="mt-4 font-black text-slate-950">
+                    Ajouter une photo
+                  </p>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    Prenez une photo ou importez une image.
+                  </p>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+
+                {imagePreview && (
+                  <img
+                    src={imagePreview}
+                    alt="Preview colis"
+                    className="mt-5 h-64 w-full rounded-[2rem] object-cover ring-1 ring-emerald-100"
+                  />
+                )}
               </div>
 
               <button
@@ -196,20 +283,24 @@ export default function PublierColisPage() {
                 label="Prix La Poste estimé"
                 value={`${pricing.laposte} €`}
               />
+
               <PriceLine
                 label="Prix Droovo client"
                 value={`${pricing.droovoPrice} €`}
                 highlight
               />
+
               <PriceLine
                 label="Économie client"
                 value={`${pricing.saving} €`}
               />
+
               <PriceLine
                 label="Gain livreur"
                 value={`${pricing.driverGain} €`}
                 highlight
               />
+
               <PriceLine
                 label="Commission Droovo"
                 value={`${pricing.commission} €`}
@@ -235,6 +326,7 @@ function PriceLine({ label, value, highlight }) {
       }`}
     >
       <p className="text-sm text-white/55">{label}</p>
+
       <p className="mt-1 text-2xl font-black text-white">{value}</p>
     </div>
   );
