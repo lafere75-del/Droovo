@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 
 import {
@@ -15,64 +18,111 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export default function AdminPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-export default async function AdminPage({ searchParams }) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const status = searchParams.get("status") || "all";
+  const q = searchParams.get("q") || "";
+  const page = Number(searchParams.get("page") || 1);
 
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", session.user.id)
-    .maybeSingle();
-
-  if (adminProfile?.role !== "admin") {
-    redirect("/dashboard");
-  }
-
-  const status = searchParams?.status || "all";
-  const q = searchParams?.q || "";
-  const page = Number(searchParams?.page || 1);
   const limit = 20;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase
-    .from("profiles")
-    .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(from, to);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
-  if (status !== "all") {
-    query = query.eq("identity_status", status);
+  const [profiles, setProfiles] = useState([]);
+  const [count, setCount] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [pendingUsers, setPendingUsers] = useState(0);
+  const [verifiedUsers, setVerifiedUsers] = useState(0);
+
+  useEffect(() => {
+    checkAdmin();
+  }, []);
+
+  useEffect(() => {
+    if (authorized) {
+      loadAdminData();
+    }
+  }, [authorized, status, q, page]);
+
+  async function checkAdmin() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.role !== "admin") {
+      router.push("/dashboard");
+      return;
+    }
+
+    setAuthorized(true);
+    setCheckingAuth(false);
   }
 
-  if (q) {
-    query = query.or(`fullname.ilike.%${q}%,email.ilike.%${q}%`);
+  async function loadAdminData() {
+    let query = supabase
+      .from("profiles")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (status !== "all") {
+      query = query.eq("identity_status", status);
+    }
+
+    if (q) {
+      query = query.or(`fullname.ilike.%${q}%,email.ilike.%${q}%`);
+    }
+
+    const { data: profilesData = [], count: profilesCount = 0 } = await query;
+
+    const { count: total = 0 } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true });
+
+    const { count: pending = 0 } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .or("identity_status.eq.pending,identity_status.is.null");
+
+    const { count: verified = 0 } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("identity_status", "verified");
+
+    setProfiles(profilesData || []);
+    setCount(profilesCount || 0);
+    setTotalUsers(total || 0);
+    setPendingUsers(pending || 0);
+    setVerifiedUsers(verified || 0);
   }
 
-  const { data: profiles = [], count = 0 } = await query;
+  if (checkingAuth) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#F4F7F5]">
+        <p className="text-xl font-black text-slate-700">
+          Vérification accès admin...
+        </p>
+      </main>
+    );
+  }
 
-  const { count: totalUsers = 0 } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true });
-
-  const { count: pendingUsers = 0 } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .or("identity_status.eq.pending,identity_status.is.null");
-
-  const { count: verifiedUsers = 0 } = await supabase
-    .from("profiles")
-    .select("*", { count: "exact", head: true })
-    .eq("identity_status", "verified");
+  if (!authorized) return null;
 
   const totalPages = Math.max(1, Math.ceil((count || 0) / limit));
 
@@ -103,9 +153,9 @@ export default async function AdminPage({ searchParams }) {
         </header>
 
         <section className="mt-6 grid gap-5 md:grid-cols-4">
-          <Stat icon={Users} label="Utilisateurs" value={totalUsers || 0} />
-          <Stat icon={ShieldAlert} label="À vérifier" value={pendingUsers || 0} warning />
-          <Stat icon={BadgeCheck} label="Comptes validés" value={verifiedUsers || 0} />
+          <Stat icon={Users} label="Utilisateurs" value={totalUsers} />
+          <Stat icon={ShieldAlert} label="À vérifier" value={pendingUsers} warning />
+          <Stat icon={BadgeCheck} label="Comptes validés" value={verifiedUsers} />
           <Stat icon={CreditCard} label="Commissions" value="0 €" />
         </section>
 
@@ -243,7 +293,7 @@ export default async function AdminPage({ searchParams }) {
           <Panel title="Alertes de gestion" icon={UserX}>
             <AdminRow
               title="Accès admin sécurisé"
-              text="La page admin vérifie maintenant le rôle admin depuis Supabase."
+              text="La page admin vérifie maintenant le rôle admin depuis Supabase côté client."
               tag="Sécurisé"
             />
             <AdminRow
