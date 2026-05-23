@@ -17,19 +17,21 @@ export default function VerificationPage() {
   const [loading, setLoading] = useState(false);
 
   async function uploadFile(file, path) {
+    if (!file) {
+      throw new Error("Fichier manquant.");
+    }
+
     const { error } = await supabase.storage
       .from("identity-documents")
-      .upload(path, file);
+      .upload(path, file, {
+        upsert: true,
+      });
 
     if (error) {
       throw error;
     }
 
-    const { data } = supabase.storage
-      .from("identity-documents")
-      .getPublicUrl(path);
-
-    return data.publicUrl;
+    return path;
   }
 
   async function handleSubmit(e) {
@@ -44,27 +46,28 @@ export default function VerificationPage() {
 
       if (!user) {
         alert("Utilisateur non connecté.");
+        setLoading(false);
         return;
       }
 
       const timestamp = Date.now();
 
-      const idFrontUrl = await uploadFile(
+      const idFrontPath = await uploadFile(
         idFront,
         `${user.id}/id-front-${timestamp}`
       );
 
-      const idBackUrl = await uploadFile(
+      const idBackPath = await uploadFile(
         idBack,
         `${user.id}/id-back-${timestamp}`
       );
 
-      const selfieUrl = await uploadFile(
+      const selfiePath = await uploadFile(
         selfie,
         `${user.id}/selfie-${timestamp}`
       );
 
-      const ribUrl = await uploadFile(
+      const ribPath = await uploadFile(
         rib,
         `${user.id}/rib-${timestamp}`
       );
@@ -74,10 +77,10 @@ export default function VerificationPage() {
         .insert({
           user_id: user.id,
           full_legal_name: fullName,
-          id_front_url: idFrontUrl,
-          id_back_url: idBackUrl,
-          selfie_url: selfieUrl,
-          rib_url: ribUrl,
+          id_front_url: idFrontPath,
+          id_back_url: idBackPath,
+          selfie_url: selfiePath,
+          rib_url: ribPath,
           status: "pending",
         });
 
@@ -85,10 +88,21 @@ export default function VerificationPage() {
         throw error;
       }
 
-      alert("Documents envoyés avec succès.");
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          identity_status: "pending",
+          fullname: fullName,
+        })
+        .eq("id", user.id);
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      alert("Documents envoyés avec succès. Votre compte est en cours de vérification.");
 
       router.push("/dashboard");
-
     } catch (error) {
       alert(error.message);
     }
@@ -99,7 +113,6 @@ export default function VerificationPage() {
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-10">
       <div className="mx-auto max-w-3xl rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
-
         <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
           Vérification
         </p>
@@ -113,7 +126,6 @@ export default function VerificationPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 grid gap-5">
-
           <input
             required
             type="text"
@@ -134,7 +146,7 @@ export default function VerificationPage() {
           />
 
           <SelfieInput
-            label="Selfie en direct"
+            label="Selfie"
             onChange={setSelfie}
           />
 
@@ -150,7 +162,6 @@ export default function VerificationPage() {
           >
             {loading ? "Envoi..." : "Envoyer les documents"}
           </button>
-
         </form>
       </div>
     </main>
@@ -168,7 +179,7 @@ function FileInput({ label, onChange }) {
         required
         type="file"
         accept="image/*,.pdf"
-        onChange={(e) => onChange(e.target.files[0])}
+        onChange={(e) => onChange(e.target.files?.[0] || null)}
         className="w-full rounded-2xl border border-emerald-100 bg-white px-5 py-4"
       />
     </div>
@@ -186,13 +197,12 @@ function SelfieInput({ label, onChange }) {
         required
         type="file"
         accept="image/*"
-        capture="user"
-        onChange={(e) => onChange(e.target.files[0])}
+        onChange={(e) => onChange(e.target.files?.[0] || null)}
         className="w-full rounded-2xl border border-emerald-100 bg-white px-5 py-4"
       />
 
       <p className="mt-2 text-sm text-slate-500">
-        Le selfie doit être pris en direct avec la caméra du téléphone.
+        Ajoutez une photo récente de vous pour confirmer votre identité.
       </p>
     </div>
   );
