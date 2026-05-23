@@ -88,8 +88,7 @@ export default function AdminPage() {
       query = query.or(`fullname.ilike.%${q}%,email.ilike.%${q}%`);
     }
 
-    const { data: profilesData = [], count: profilesCount = 0 } =
-      await query;
+    const { data: profilesData = [], count: profilesCount = 0 } = await query;
 
     const { count: total = 0 } = await supabase
       .from("profiles")
@@ -112,6 +111,24 @@ export default function AdminPage() {
     setVerifiedUsers(verified || 0);
   }
 
+  async function validateProfile(userId) {
+    await supabase
+      .from("profiles")
+      .update({ identity_status: "verified" })
+      .eq("id", userId);
+
+    await loadAdminData();
+  }
+
+  async function rejectProfile(userId) {
+    await supabase
+      .from("profiles")
+      .update({ identity_status: "rejected" })
+      .eq("id", userId);
+
+    await loadAdminData();
+  }
+
   if (checkingAuth) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#F4F7F5]">
@@ -124,10 +141,7 @@ export default function AdminPage() {
 
   if (!authorized) return null;
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil((count || 0) / limit)
-  );
+  const totalPages = Math.max(1, Math.ceil((count || 0) / limit));
 
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-8 text-slate-950">
@@ -144,9 +158,7 @@ export default function AdminPage() {
               </h1>
 
               <p className="mt-2 text-slate-600">
-                Vue rapide des utilisateurs,
-                vérifications, colis, trajets et flux
-                financiers.
+                Vue rapide des utilisateurs, vérifications, colis, trajets et flux financiers.
               </p>
             </div>
 
@@ -160,11 +172,7 @@ export default function AdminPage() {
         </header>
 
         <section className="mt-6 grid gap-5 md:grid-cols-4">
-          <Stat
-            icon={Users}
-            label="Utilisateurs"
-            value={totalUsers}
-          />
+          <Stat icon={Users} label="Utilisateurs" value={totalUsers} />
 
           <Stat
             icon={ShieldAlert}
@@ -179,11 +187,7 @@ export default function AdminPage() {
             value={verifiedUsers}
           />
 
-          <Stat
-            icon={CreditCard}
-            label="Commissions"
-            value="0 €"
-          />
+          <Stat icon={CreditCard} label="Commissions" value="0 €" />
         </section>
 
         <section className="mt-6 grid gap-5 lg:grid-cols-4">
@@ -224,23 +228,17 @@ export default function AdminPage() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Recherche, filtre et suivi des
-                statuts d’identité.
+                Validation des identités et gestion des comptes.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 md:flex-row">
               <div className="flex items-center gap-2 rounded-full bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
-                <Search
-                  size={18}
-                  className="text-slate-400"
-                />
+                <Search size={18} className="text-slate-400" />
 
                 <input
                   value={q}
-                  onChange={(e) =>
-                    setQ(e.target.value)
-                  }
+                  onChange={(e) => setQ(e.target.value)}
                   placeholder="Rechercher nom ou email"
                   className="bg-transparent text-sm outline-none"
                 />
@@ -248,24 +246,13 @@ export default function AdminPage() {
 
               <select
                 value={status}
-                onChange={(e) =>
-                  setStatus(e.target.value)
-                }
+                onChange={(e) => setStatus(e.target.value)}
                 className="rounded-full bg-slate-50 px-4 py-3 text-sm font-bold outline-none ring-1 ring-slate-200"
               >
                 <option value="all">Tous</option>
-
-                <option value="pending">
-                  À vérifier
-                </option>
-
-                <option value="verified">
-                  Vérifiés
-                </option>
-
-                <option value="rejected">
-                  Refusés
-                </option>
+                <option value="pending">À vérifier</option>
+                <option value="verified">Vérifiés</option>
+                <option value="rejected">Refusés</option>
               </select>
 
               <button
@@ -304,15 +291,12 @@ export default function AdminPage() {
                     </p>
 
                     <p className="mt-1 text-xs text-slate-400">
-                      ID :{" "}
-                      {profile.id?.slice(0, 8)}
-                      ...
+                      ID : {profile.id?.slice(0, 8)}...
                     </p>
                   </div>
 
                   <span className="text-slate-600">
-                    {profile.email ||
-                      "Email non renseigné"}
+                    {profile.email || "Email non renseigné"}
                   </span>
 
                   <span className="font-bold text-slate-700">
@@ -321,22 +305,32 @@ export default function AdminPage() {
 
                   <span className="text-slate-500">
                     {profile.created_at
-                      ? new Date(
-                          profile.created_at
-                        ).toLocaleDateString(
-                          "fr-FR"
-                        )
+                      ? new Date(profile.created_at).toLocaleDateString("fr-FR")
                       : "-"}
                   </span>
 
-                  <span>
-                    <Status
-                      status={
-                        profile.identity_status ||
-                        "pending"
-                      }
-                    />
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Status status={profile.identity_status || "pending"} />
+
+                    {(profile.identity_status === "pending" ||
+                      !profile.identity_status) && (
+                      <>
+                        <button
+                          onClick={() => validateProfile(profile.id)}
+                          className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white"
+                        >
+                          Valider
+                        </button>
+
+                        <button
+                          onClick={() => rejectProfile(profile.id)}
+                          className="rounded-full bg-red-600 px-3 py-1 text-xs font-black text-white"
+                        >
+                          Refuser
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -344,16 +338,13 @@ export default function AdminPage() {
 
           <div className="mt-6 flex items-center justify-between">
             <p className="text-sm font-bold text-slate-500">
-              Page {page} / {totalPages} ·{" "}
-              {count || 0} résultat(s)
+              Page {page} / {totalPages} · {count || 0} résultat(s)
             </p>
 
             <div className="flex gap-2">
               <button
                 disabled={page <= 1}
-                onClick={() =>
-                  setPage((prev) => prev - 1)
-                }
+                onClick={() => setPage((prev) => prev - 1)}
                 className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:opacity-40"
               >
                 Précédent
@@ -361,9 +352,7 @@ export default function AdminPage() {
 
               <button
                 disabled={page >= totalPages}
-                onClick={() =>
-                  setPage((prev) => prev + 1)
-                }
+                onClick={() => setPage((prev) => prev + 1)}
                 className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:opacity-40"
               >
                 Suivant
@@ -373,35 +362,25 @@ export default function AdminPage() {
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
-          <Panel
-            title="Comptes à vérifier"
-            icon={ShieldAlert}
-          >
+          <Panel title="Comptes à vérifier" icon={ShieldAlert}>
             {profiles.filter(
-              (p) =>
-                !p.identity_status ||
-                p.identity_status === "pending"
+              (p) => !p.identity_status || p.identity_status === "pending"
             ).length === 0 ? (
               <Empty text="Aucun compte à vérifier sur cette page." />
             ) : (
               profiles
                 .filter(
                   (p) =>
-                    !p.identity_status ||
-                    p.identity_status ===
-                      "pending"
+                    !p.identity_status || p.identity_status === "pending"
                 )
                 .map((profile) => (
                   <AdminRow
                     key={profile.id}
                     title={
-                      profile.fullname ||
-                      profile.email ||
-                      "Utilisateur"
+                      profile.fullname || profile.email || "Utilisateur"
                     }
                     text={`${
-                      profile.email ||
-                      "Email non renseigné"
+                      profile.email || "Email non renseigné"
                     } · pièce d’identité à contrôler`}
                     tag="En attente"
                     warning
@@ -410,13 +389,10 @@ export default function AdminPage() {
             )}
           </Panel>
 
-          <Panel
-            title="Alertes de gestion"
-            icon={UserX}
-          >
+          <Panel title="Alertes de gestion" icon={UserX}>
             <AdminRow
               title="Accès admin sécurisé"
-              text="La page admin vérifie maintenant le rôle admin depuis Supabase côté client."
+              text="La page admin vérifie le rôle admin depuis Supabase côté client."
               tag="Sécurisé"
             />
 
@@ -432,73 +408,42 @@ export default function AdminPage() {
   );
 }
 
-function Stat({
-  icon: Icon,
-  label,
-  value,
-  warning,
-}) {
+function Stat({ icon: Icon, label, value, warning }) {
   return (
     <div className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-emerald-100">
       <Icon
-        className={
-          warning
-            ? "text-amber-600"
-            : "text-emerald-700"
-        }
+        className={warning ? "text-amber-600" : "text-emerald-700"}
         size={24}
       />
 
-      <p className="mt-4 text-sm font-bold text-slate-500">
-        {label}
-      </p>
+      <p className="mt-4 text-sm font-bold text-slate-500">{label}</p>
 
-      <p className="mt-1 text-3xl font-black text-slate-950">
-        {value}
-      </p>
+      <p className="mt-1 text-3xl font-black text-slate-950">{value}</p>
     </div>
   );
 }
 
-function QuickCard({
-  icon: Icon,
-  title,
-  value,
-  text,
-}) {
+function QuickCard({ icon: Icon, title, value, text }) {
   return (
     <div className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-emerald-100">
       <div className="flex items-center justify-between">
-        <Icon
-          className="text-emerald-700"
-          size={23}
-        />
+        <Icon className="text-emerald-700" size={23} />
 
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">
           Bientôt
         </span>
       </div>
 
-      <p className="mt-4 text-sm font-bold text-slate-500">
-        {title}
-      </p>
+      <p className="mt-4 text-sm font-bold text-slate-500">{title}</p>
 
-      <p className="mt-1 text-3xl font-black text-slate-950">
-        {value}
-      </p>
+      <p className="mt-1 text-3xl font-black text-slate-950">{value}</p>
 
-      <p className="mt-2 text-xs font-bold text-slate-400">
-        {text}
-      </p>
+      <p className="mt-2 text-xs font-bold text-slate-400">{text}</p>
     </div>
   );
 }
 
-function Panel({
-  title,
-  icon: Icon,
-  children,
-}) {
+function Panel({ title, icon: Icon, children }) {
   return (
     <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
       <div className="mb-5 flex items-center gap-3">
@@ -506,9 +451,7 @@ function Panel({
           <Icon size={22} />
         </div>
 
-        <h2 className="text-xl font-black text-slate-950">
-          {title}
-        </h2>
+        <h2 className="text-xl font-black text-slate-950">{title}</h2>
       </div>
 
       {children}
@@ -518,11 +461,9 @@ function Panel({
 
 function Status({ status }) {
   const config = {
-    verified:
-      "bg-emerald-100 text-emerald-700",
+    verified: "bg-emerald-100 text-emerald-700",
     rejected: "bg-red-100 text-red-700",
-    pending:
-      "bg-amber-100 text-amber-700",
+    pending: "bg-amber-100 text-amber-700",
   };
 
   const label = {
@@ -542,22 +483,13 @@ function Status({ status }) {
   );
 }
 
-function AdminRow({
-  title,
-  text,
-  tag,
-  warning,
-}) {
+function AdminRow({ title, text, tag, warning }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
       <div>
-        <p className="font-black text-slate-950">
-          {title}
-        </p>
+        <p className="font-black text-slate-950">{title}</p>
 
-        <p className="mt-1 text-sm text-slate-600">
-          {text}
-        </p>
+        <p className="mt-1 text-sm text-slate-600">{text}</p>
       </div>
 
       <span
