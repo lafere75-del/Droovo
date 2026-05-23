@@ -120,23 +120,36 @@ export default function AdminPage() {
     }
 
     if (!data) {
-      alert("Aucun document trouvé pour cet utilisateur.");
+      alert("Aucun document trouvé.");
       return;
     }
 
-    const urls = [
+    const paths = [
       data.id_front_url,
       data.id_back_url,
       data.selfie_url,
       data.rib_url,
     ].filter(Boolean);
 
-    if (urls.length === 0) {
-      alert("Aucun fichier disponible.");
+    if (paths.length === 0) {
+      alert("Aucun fichier trouvé.");
       return;
     }
 
-    urls.forEach((url) => window.open(url, "_blank"));
+    for (const path of paths) {
+      const { data: signedData, error: signedError } = await supabase.storage
+        .from("identity-documents")
+        .createSignedUrl(path, 60 * 5);
+
+      if (signedError) {
+        console.error(signedError);
+        continue;
+      }
+
+      if (signedData?.signedUrl) {
+        window.open(signedData.signedUrl, "_blank");
+      }
+    }
   }
 
   async function validateProfile(userId) {
