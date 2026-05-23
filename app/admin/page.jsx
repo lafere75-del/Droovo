@@ -43,9 +43,7 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (authorized) {
-      loadAdminData();
-    }
+    if (authorized) loadAdminData();
   }, [authorized, status, q, page]);
 
   async function checkAdmin() {
@@ -80,13 +78,9 @@ export default function AdminPage() {
       .order("created_at", { ascending: false })
       .range(from, to);
 
-    if (status !== "all") {
-      query = query.eq("identity_status", status);
-    }
+    if (status !== "all") query = query.eq("identity_status", status);
 
-    if (q) {
-      query = query.or(`fullname.ilike.%${q}%,email.ilike.%${q}%`);
-    }
+    if (q) query = query.or(`fullname.ilike.%${q}%,email.ilike.%${q}%`);
 
     const { data: profilesData = [], count: profilesCount = 0 } = await query;
 
@@ -109,6 +103,40 @@ export default function AdminPage() {
     setTotalUsers(total || 0);
     setPendingUsers(pending || 0);
     setVerifiedUsers(verified || 0);
+  }
+
+  async function openVerification(userId) {
+    const { data, error } = await supabase
+      .from("identity_verifications")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      alert("Erreur documents : " + error.message);
+      return;
+    }
+
+    if (!data) {
+      alert("Aucun document trouvé pour cet utilisateur.");
+      return;
+    }
+
+    const urls = [
+      data.id_front_url,
+      data.id_back_url,
+      data.selfie_url,
+      data.rib_url,
+    ].filter(Boolean);
+
+    if (urls.length === 0) {
+      alert("Aucun fichier disponible.");
+      return;
+    }
+
+    urls.forEach((url) => window.open(url, "_blank"));
   }
 
   async function validateProfile(userId) {
@@ -173,51 +201,16 @@ export default function AdminPage() {
 
         <section className="mt-6 grid gap-5 md:grid-cols-4">
           <Stat icon={Users} label="Utilisateurs" value={totalUsers} />
-
-          <Stat
-            icon={ShieldAlert}
-            label="À vérifier"
-            value={pendingUsers}
-            warning
-          />
-
-          <Stat
-            icon={BadgeCheck}
-            label="Comptes validés"
-            value={verifiedUsers}
-          />
-
+          <Stat icon={ShieldAlert} label="À vérifier" value={pendingUsers} warning />
+          <Stat icon={BadgeCheck} label="Comptes validés" value={verifiedUsers} />
           <Stat icon={CreditCard} label="Commissions" value="0 €" />
         </section>
 
         <section className="mt-6 grid gap-5 lg:grid-cols-4">
-          <QuickCard
-            icon={Package}
-            title="Colis actifs"
-            value="0"
-            text="Table packages à connecter"
-          />
-
-          <QuickCard
-            icon={Car}
-            title="Trajets actifs"
-            value="0"
-            text="Table trips à connecter"
-          />
-
-          <QuickCard
-            icon={TrendingUp}
-            title="Volume brut"
-            value="0 €"
-            text="Stripe à connecter"
-          />
-
-          <QuickCard
-            icon={Clock3}
-            title="Aujourd’hui"
-            value="0"
-            text="Activité du jour"
-          />
+          <QuickCard icon={Package} title="Colis actifs" value="0" text="Table packages à connecter" />
+          <QuickCard icon={Car} title="Trajets actifs" value="0" text="Table trips à connecter" />
+          <QuickCard icon={TrendingUp} title="Volume brut" value="0 €" text="Stripe à connecter" />
+          <QuickCard icon={Clock3} title="Aujourd’hui" value="0" text="Activité du jour" />
         </section>
 
         <section className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
@@ -257,6 +250,7 @@ export default function AdminPage() {
 
               <button
                 type="button"
+                onClick={() => loadAdminData()}
                 className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white"
               >
                 Filtrer
@@ -285,9 +279,7 @@ export default function AdminPage() {
                 >
                   <div>
                     <p className="font-black text-slate-950">
-                      {profile.fullname ||
-                        profile.first_name ||
-                        "Nom non renseigné"}
+                      {profile.fullname || profile.first_name || "Nom non renseigné"}
                     </p>
 
                     <p className="mt-1 text-xs text-slate-400">
@@ -315,6 +307,13 @@ export default function AdminPage() {
                     {(profile.identity_status === "pending" ||
                       !profile.identity_status) && (
                       <>
+                        <button
+                          onClick={() => openVerification(profile.id)}
+                          className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white"
+                        >
+                          Voir docs
+                        </button>
+
                         <button
                           onClick={() => validateProfile(profile.id)}
                           className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white"
@@ -370,15 +369,12 @@ export default function AdminPage() {
             ) : (
               profiles
                 .filter(
-                  (p) =>
-                    !p.identity_status || p.identity_status === "pending"
+                  (p) => !p.identity_status || p.identity_status === "pending"
                 )
                 .map((profile) => (
                   <AdminRow
                     key={profile.id}
-                    title={
-                      profile.fullname || profile.email || "Utilisateur"
-                    }
+                    title={profile.fullname || profile.email || "Utilisateur"}
                     text={`${
                       profile.email || "Email non renseigné"
                     } · pièce d’identité à contrôler`}
@@ -417,7 +413,6 @@ function Stat({ icon: Icon, label, value, warning }) {
       />
 
       <p className="mt-4 text-sm font-bold text-slate-500">{label}</p>
-
       <p className="mt-1 text-3xl font-black text-slate-950">{value}</p>
     </div>
   );
@@ -428,16 +423,13 @@ function QuickCard({ icon: Icon, title, value, text }) {
     <div className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-emerald-100">
       <div className="flex items-center justify-between">
         <Icon className="text-emerald-700" size={23} />
-
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">
           Bientôt
         </span>
       </div>
 
       <p className="mt-4 text-sm font-bold text-slate-500">{title}</p>
-
       <p className="mt-1 text-3xl font-black text-slate-950">{value}</p>
-
       <p className="mt-2 text-xs font-bold text-slate-400">{text}</p>
     </div>
   );
@@ -488,7 +480,6 @@ function AdminRow({ title, text, tag, warning }) {
     <div className="mb-3 flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
       <div>
         <p className="font-black text-slate-950">{title}</p>
-
         <p className="mt-1 text-sm text-slate-600">{text}</p>
       </div>
 
