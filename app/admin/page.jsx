@@ -79,6 +79,7 @@ export default function AdminPage() {
       .range(from, to);
 
     if (status !== "all") query = query.eq("identity_status", status);
+
     if (q) query = query.or(`fullname.ilike.%${q}%,email.ilike.%${q}%`);
 
     const { data: profilesData = [], count: profilesCount = 0 } = await query;
@@ -128,7 +129,7 @@ export default function AdminPage() {
       { label: "Carte identité verso", path: data.id_back_url },
       { label: "Selfie", path: data.selfie_url },
       { label: "RIB", path: data.rib_url },
-    ].filter((f) => f.path);
+    ].filter((file) => file.path);
 
     if (files.length === 0) {
       alert("Aucun fichier trouvé.");
@@ -138,22 +139,29 @@ export default function AdminPage() {
     const links = [];
 
     for (const file of files) {
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from("identity-documents")
-        .createSignedUrl(file.path, 60 * 5);
+      let finalUrl = file.path;
 
-      if (signedError) {
-        console.error(signedError);
-        continue;
+      if (!file.path.startsWith("http")) {
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from("identity-documents")
+          .createSignedUrl(file.path, 60 * 5);
+
+        if (signedError) {
+          console.error(signedError);
+          continue;
+        }
+
+        finalUrl = signedData?.signedUrl;
       }
 
-      if (signedData?.signedUrl) {
+      if (finalUrl) {
         links.push(`
           <div style="margin-bottom:16px;padding:16px;background:white;border-radius:16px;border:1px solid #d1fae5;">
             <p style="font-weight:bold;margin-bottom:10px;color:#0f172a;">
               ${file.label}
             </p>
-            <a href="${signedData.signedUrl}" target="_blank" style="color:#059669;font-weight:bold;text-decoration:none;">
+
+            <a href="${finalUrl}" target="_blank" style="color:#059669;font-weight:bold;text-decoration:none;">
               Ouvrir le document
             </a>
           </div>
@@ -173,10 +181,12 @@ export default function AdminPage() {
         <head>
           <title>Documents identité</title>
         </head>
+
         <body style="font-family:Arial;padding:30px;background:#f8fafc;">
           <h1 style="margin-bottom:25px;color:#0f172a;">
             Documents utilisateur
           </h1>
+
           ${links.join("")}
         </body>
       </html>
@@ -247,16 +257,51 @@ export default function AdminPage() {
 
         <section className="mt-6 grid gap-5 md:grid-cols-4">
           <Stat icon={Users} label="Utilisateurs" value={totalUsers} />
-          <Stat icon={ShieldAlert} label="À vérifier" value={pendingUsers} warning />
-          <Stat icon={BadgeCheck} label="Comptes validés" value={verifiedUsers} />
+
+          <Stat
+            icon={ShieldAlert}
+            label="À vérifier"
+            value={pendingUsers}
+            warning
+          />
+
+          <Stat
+            icon={BadgeCheck}
+            label="Comptes validés"
+            value={verifiedUsers}
+          />
+
           <Stat icon={CreditCard} label="Commissions" value="0 €" />
         </section>
 
         <section className="mt-6 grid gap-5 lg:grid-cols-4">
-          <QuickCard icon={Package} title="Colis actifs" value="0" text="Table packages à connecter" />
-          <QuickCard icon={Car} title="Trajets actifs" value="0" text="Table trips à connecter" />
-          <QuickCard icon={TrendingUp} title="Volume brut" value="0 €" text="Stripe à connecter" />
-          <QuickCard icon={Clock3} title="Aujourd’hui" value="0" text="Activité du jour" />
+          <QuickCard
+            icon={Package}
+            title="Colis actifs"
+            value="0"
+            text="Table packages à connecter"
+          />
+
+          <QuickCard
+            icon={Car}
+            title="Trajets actifs"
+            value="0"
+            text="Table trips à connecter"
+          />
+
+          <QuickCard
+            icon={TrendingUp}
+            title="Volume brut"
+            value="0 €"
+            text="Stripe à connecter"
+          />
+
+          <QuickCard
+            icon={Clock3}
+            title="Aujourd’hui"
+            value="0"
+            text="Activité du jour"
+          />
         </section>
 
         <section className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
