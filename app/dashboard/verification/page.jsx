@@ -42,21 +42,7 @@ export default function VerificationPage() {
       throw new Error("Fichier manquant.");
     }
 
-    let extension = "jpg";
-
-    if (file.name && file.name.includes(".")) {
-      extension = file.name.split(".").pop();
-    }
-
-    if (file.type === "application/pdf") {
-      extension = "pdf";
-    }
-
-    if (file.type === "image/png") {
-      extension = "png";
-    }
-
-    const finalPath = `${path}.${extension}`;
+    const finalPath = `${path}.jpg`;
 
     const { error } = await supabase.storage
       .from("identity-documents")
@@ -205,15 +191,9 @@ export default function VerificationPage() {
               onChange={setIdBack}
             />
 
-            <SelfieInput
-              label="Selfie"
-              onChange={setSelfie}
-            />
+            <SelfieInput label="Selfie" onChange={setSelfie} />
 
-            <FileInput
-              label="RIB au même nom"
-              onChange={setRib}
-            />
+            <FileInput label="RIB au même nom" onChange={setRib} />
 
             <button
               type="submit"
