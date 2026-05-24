@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const identityStatus = "verified";
+  const [identityStatus, setIdentityStatus] = useState("pending");
 
   const [packages, setPackages] = useState([]);
   const [trips, setTrips] = useState([]);
@@ -60,6 +60,14 @@ export default function DashboardPage() {
       setLoading(false);
       return;
     }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("identity_status")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    setIdentityStatus(profile?.identity_status || "pending");
 
     const { data: userPackages } = await supabase
       .from("packages")
@@ -196,7 +204,13 @@ export default function DashboardPage() {
           <Stat
             icon={BadgeCheck}
             label="Statut"
-            value="Vérifié"
+            value={
+              identityStatus === "verified"
+                ? "Vérifié"
+                : identityStatus === "pending"
+                ? "En attente"
+                : "Non vérifié"
+            }
           />
 
         </section>
@@ -284,48 +298,6 @@ export default function DashboardPage() {
 
         </section>
 
-        <section className="mt-8 grid gap-6 lg:grid-cols-2">
-
-          <Panel title="Mes derniers trajets">
-
-            {trips.length === 0 ? (
-              <Empty text="Aucun trajet déclaré pour le moment." />
-            ) : (
-              trips.slice(0, 3).map((trip) => (
-                <Row
-                  key={trip.id}
-                  title={`${trip.departure_city} → ${trip.arrival_city}`}
-                  text={`Date : ${
-                    trip.trip_date
-                      ? new Date(trip.trip_date).toLocaleDateString("fr-FR")
-                      : "Date non renseignée"
-                  }`}
-                  tag={`${trip.available_weight || 0} kg dispo`}
-                />
-              ))
-            )}
-
-          </Panel>
-
-          <Panel title="Mes derniers colis">
-
-            {packages.length === 0 ? (
-              <Empty text="Aucun colis publié pour le moment." />
-            ) : (
-              packages.slice(0, 3).map((pkg) => (
-                <Row
-                  key={pkg.id}
-                  title={`${pkg.departure_city} → ${pkg.arrival_city}`}
-                  text={pkg.title || "Colis sans titre"}
-                  tag={`${pkg.weight || 0} kg · ${pkg.price || 0} €`}
-                />
-              ))
-            )}
-
-          </Panel>
-
-        </section>
-
       </div>
     </main>
   );
@@ -381,54 +353,6 @@ function ActionCard({ icon: Icon, title, text, href, locked }) {
         </Link>
       )}
 
-    </div>
-  );
-}
-
-function Panel({ title, children }) {
-  return (
-    <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
-
-      <h2 className="text-xl font-black text-slate-950">
-        {title}
-      </h2>
-
-      <div className="mt-5 grid gap-3">
-        {children}
-      </div>
-
-    </div>
-  );
-}
-
-function Row({ title, text, tag }) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
-
-      <div>
-
-        <p className="font-black text-slate-950">
-          {title}
-        </p>
-
-        <p className="mt-1 text-sm text-slate-600">
-          {text}
-        </p>
-
-      </div>
-
-      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
-        {tag}
-      </span>
-
-    </div>
-  );
-}
-
-function Empty({ text }) {
-  return (
-    <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-100">
-      {text}
     </div>
   );
 }
