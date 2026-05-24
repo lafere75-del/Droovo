@@ -79,7 +79,6 @@ export default function AdminPage() {
       .range(from, to);
 
     if (status !== "all") query = query.eq("identity_status", status);
-
     if (q) query = query.or(`fullname.ilike.%${q}%,email.ilike.%${q}%`);
 
     const { data: profilesData = [], count: profilesCount = 0 } = await query;
@@ -124,22 +123,24 @@ export default function AdminPage() {
       return;
     }
 
-    const paths = [
-      data.id_front_url,
-      data.id_back_url,
-      data.selfie_url,
-      data.rib_url,
-    ].filter(Boolean);
+    const files = [
+      { label: "Carte identité recto", path: data.id_front_url },
+      { label: "Carte identité verso", path: data.id_back_url },
+      { label: "Selfie", path: data.selfie_url },
+      { label: "RIB", path: data.rib_url },
+    ].filter((f) => f.path);
 
-    if (paths.length === 0) {
+    if (files.length === 0) {
       alert("Aucun fichier trouvé.");
       return;
     }
 
-    for (const path of paths) {
+    const links = [];
+
+    for (const file of files) {
       const { data: signedData, error: signedError } = await supabase.storage
         .from("identity-documents")
-        .createSignedUrl(path, 60 * 5);
+        .createSignedUrl(file.path, 60 * 5);
 
       if (signedError) {
         console.error(signedError);
@@ -147,9 +148,41 @@ export default function AdminPage() {
       }
 
       if (signedData?.signedUrl) {
-        window.open(signedData.signedUrl, "_blank");
+        links.push(`
+          <div style="margin-bottom:16px;padding:16px;background:white;border-radius:16px;border:1px solid #d1fae5;">
+            <p style="font-weight:bold;margin-bottom:10px;color:#0f172a;">
+              ${file.label}
+            </p>
+            <a href="${signedData.signedUrl}" target="_blank" style="color:#059669;font-weight:bold;text-decoration:none;">
+              Ouvrir le document
+            </a>
+          </div>
+        `);
       }
     }
+
+    const newWindow = window.open("", "_blank");
+
+    if (!newWindow) {
+      alert("Le navigateur bloque la fenêtre.");
+      return;
+    }
+
+    newWindow.document.write(`
+      <html>
+        <head>
+          <title>Documents identité</title>
+        </head>
+        <body style="font-family:Arial;padding:30px;background:#f8fafc;">
+          <h1 style="margin-bottom:25px;color:#0f172a;">
+            Documents utilisateur
+          </h1>
+          ${links.join("")}
+        </body>
+      </html>
+    `);
+
+    newWindow.document.close();
   }
 
   async function validateProfile(userId) {
