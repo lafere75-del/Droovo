@@ -24,19 +24,17 @@ export default function AdminPage() {
   const [status, setStatus] = useState("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-
-  const limit = 20;
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
-
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [authorized, setAuthorized] = useState(false);
-
   const [profiles, setProfiles] = useState([]);
   const [count, setCount] = useState(0);
   const [totalUsers, setTotalUsers] = useState(0);
   const [pendingUsers, setPendingUsers] = useState(0);
   const [verifiedUsers, setVerifiedUsers] = useState(0);
+
+  const limit = 20;
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
   useEffect(() => {
     checkAdmin();
@@ -47,9 +45,7 @@ export default function AdminPage() {
   }, [authorized, status, q, page]);
 
   async function checkAdmin() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       router.push("/login");
@@ -79,7 +75,6 @@ export default function AdminPage() {
       .range(from, to);
 
     if (status !== "all") query = query.eq("identity_status", status);
-
     if (q) query = query.or(`fullname.ilike.%${q}%,email.ilike.%${q}%`);
 
     const { data: profilesData = [], count: profilesCount = 0 } = await query;
@@ -129,57 +124,72 @@ export default function AdminPage() {
       .limit(1)
       .maybeSingle();
 
-    if (error) {
-      newWindow.document.body.innerHTML = `<p>Erreur : ${error.message}</p>`;
-      return;
-    }
-
-    if (!data) {
+    if (error || !data) {
       newWindow.document.body.innerHTML = `<p>Aucun document trouvé.</p>`;
       return;
     }
 
-    const files = [
-      { label: "Carte identité recto", path: data.id_front_url },
-      { label: "Carte identité verso", path: data.id_back_url },
-      { label: "Selfie", path: data.selfie_url },
-      { label: "RIB", path: data.rib_url },
-    ].filter((file) => file.path);
+    function cleanPath(rawPath) {
+      if (!rawPath) return null;
 
-    const links = [];
+      if (rawPath.startsWith("http")) {
+        const marker = "/identity-documents/";
+        const index = rawPath.indexOf(marker);
 
-    for (const file of files) {
-      let finalUrl = file.path;
-
-      if (!file.path.startsWith("http")) {
-        const { data: signedData, error: signedError } = await supabase.storage
-          .from("identity-documents")
-          .createSignedUrl(file.path, 60 * 5);
-
-        if (signedError) {
-          console.error(signedError);
-          continue;
+        if (index !== -1) {
+          return decodeURIComponent(rawPath.slice(index + marker.length));
         }
 
-        finalUrl = signedData?.signedUrl;
+        return rawPath;
       }
 
-      if (finalUrl) {
-        links.push(`
-          <div style="margin-bottom:16px;padding:16px;background:white;border-radius:16px;border:1px solid #d1fae5;">
-            <p style="font-weight:bold;margin-bottom:10px;color:#0f172a;">${file.label}</p>
-            <a href="${finalUrl}" target="_blank" style="color:#059669;font-weight:bold;text-decoration:none;">
-              Ouvrir le document
-            </a>
+      if (!rawPath.includes("/")) {
+        return `${userId}/${rawPath}`;
+      }
+
+      return rawPath;
+    }
+
+    const files = [
+      { label: "Carte identité recto", path: cleanPath(data.id_front_url) },
+      { label: "Carte identité verso", path: cleanPath(data.id_back_url) },
+      { label: "Selfie", path: cleanPath(data.selfie_url) },
+      { label: "RIB", path: cleanPath(data.rib_url) },
+    ].filter((file) => file.path);
+
+    const blocks = [];
+
+    for (const file of files) {
+      const { data: signedData, error: signedError } = await supabase.storage
+        .from("identity-documents")
+        .createSignedUrl(file.path, 60 * 10);
+
+      if (signedError) {
+        blocks.push(`
+          <div style="margin-bottom:16px;padding:16px;background:#fee2e2;border-radius:16px;">
+            <strong>${file.label}</strong>
+            <p>Erreur : ${signedError.message}</p>
+            <small>Path testé : ${file.path}</small>
           </div>
         `);
+        continue;
       }
+
+      blocks.push(`
+        <div style="margin-bottom:16px;padding:16px;background:white;border-radius:16px;border:1px solid #d1fae5;">
+          <strong>${file.label}</strong>
+          <p><small>Path : ${file.path}</small></p>
+          <a href="${signedData.signedUrl}" target="_blank" style="color:#059669;font-weight:bold;">
+            Ouvrir le document
+          </a>
+        </div>
+      `);
     }
 
     newWindow.document.body.innerHTML = `
       <body style="font-family:Arial;padding:30px;background:#f8fafc;">
-        <h1 style="margin-bottom:25px;color:#0f172a;">Documents utilisateur</h1>
-        ${links.length > 0 ? links.join("") : "<p>Aucun document exploitable trouvé.</p>"}
+        <h1>Documents utilisateur</h1>
+        ${blocks.join("") || "<p>Aucun document exploitable trouvé.</p>"}
       </body>
     `;
   }
@@ -225,20 +235,15 @@ export default function AdminPage() {
               <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
                 Back-office
               </p>
-
               <h1 className="mt-2 text-4xl font-black tracking-tight">
                 Admin Droovo
               </h1>
-
               <p className="mt-2 text-slate-600">
                 Vue rapide des utilisateurs, vérifications, colis, trajets et flux financiers.
               </p>
             </div>
 
-            <Link
-              href="/"
-              className="rounded-full bg-slate-950 px-5 py-3 text-center text-sm font-black text-white"
-            >
+            <Link href="/" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white">
               Retour accueil
             </Link>
           </div>
@@ -264,7 +269,6 @@ export default function AdminPage() {
               <h2 className="text-2xl font-black text-slate-950">
                 Gestion des utilisateurs
               </h2>
-
               <p className="mt-1 text-sm text-slate-500">
                 Validation des identités et gestion des comptes.
               </p>
@@ -273,7 +277,6 @@ export default function AdminPage() {
             <div className="flex flex-col gap-3 md:flex-row">
               <div className="flex items-center gap-2 rounded-full bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
                 <Search size={18} className="text-slate-400" />
-
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
@@ -318,15 +321,11 @@ export default function AdminPage() {
               </div>
             ) : (
               profiles.map((profile) => (
-                <div
-                  key={profile.id}
-                  className="grid grid-cols-5 items-center border-t border-slate-100 px-4 py-4 text-sm"
-                >
+                <div key={profile.id} className="grid grid-cols-5 items-center border-t border-slate-100 px-4 py-4 text-sm">
                   <div>
                     <p className="font-black text-slate-950">
                       {profile.fullname || profile.first_name || "Nom non renseigné"}
                     </p>
-
                     <p className="mt-1 text-xs text-slate-400">
                       ID : {profile.id?.slice(0, 8)}...
                     </p>
@@ -341,16 +340,13 @@ export default function AdminPage() {
                   </span>
 
                   <span className="text-slate-500">
-                    {profile.created_at
-                      ? new Date(profile.created_at).toLocaleDateString("fr-FR")
-                      : "-"}
+                    {profile.created_at ? new Date(profile.created_at).toLocaleDateString("fr-FR") : "-"}
                   </span>
 
                   <div className="flex flex-wrap items-center gap-2">
                     <Status status={profile.identity_status || "pending"} />
 
-                    {(profile.identity_status === "pending" ||
-                      !profile.identity_status) && (
+                    {(profile.identity_status === "pending" || !profile.identity_status) && (
                       <>
                         <button
                           onClick={() => openVerification(profile.id)}
@@ -407,9 +403,7 @@ export default function AdminPage() {
 
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
           <Panel title="Comptes à vérifier" icon={ShieldAlert}>
-            {profiles.filter(
-              (p) => !p.identity_status || p.identity_status === "pending"
-            ).length === 0 ? (
+            {profiles.filter((p) => !p.identity_status || p.identity_status === "pending").length === 0 ? (
               <Empty text="Aucun compte à vérifier sur cette page." />
             ) : (
               profiles
@@ -418,9 +412,7 @@ export default function AdminPage() {
                   <AdminRow
                     key={profile.id}
                     title={profile.fullname || profile.email || "Utilisateur"}
-                    text={`${
-                      profile.email || "Email non renseigné"
-                    } · pièce d’identité à contrôler`}
+                    text={`${profile.email || "Email non renseigné"} · pièce d’identité à contrôler`}
                     tag="En attente"
                     warning
                   />
@@ -434,7 +426,6 @@ export default function AdminPage() {
               text="La page admin vérifie le rôle admin depuis Supabase côté client."
               tag="Sécurisé"
             />
-
             <AdminRow
               title="Paiements non connectés"
               text="Stripe doit être ajouté pour suivre commissions et reversements."
@@ -450,11 +441,7 @@ export default function AdminPage() {
 function Stat({ icon: Icon, label, value, warning }) {
   return (
     <div className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-emerald-100">
-      <Icon
-        className={warning ? "text-amber-600" : "text-emerald-700"}
-        size={24}
-      />
-
+      <Icon className={warning ? "text-amber-600" : "text-emerald-700"} size={24} />
       <p className="mt-4 text-sm font-bold text-slate-500">{label}</p>
       <p className="mt-1 text-3xl font-black text-slate-950">{value}</p>
     </div>
@@ -466,12 +453,10 @@ function QuickCard({ icon: Icon, title, value, text }) {
     <div className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-emerald-100">
       <div className="flex items-center justify-between">
         <Icon className="text-emerald-700" size={23} />
-
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">
           Bientôt
         </span>
       </div>
-
       <p className="mt-4 text-sm font-bold text-slate-500">{title}</p>
       <p className="mt-1 text-3xl font-black text-slate-950">{value}</p>
       <p className="mt-2 text-xs font-bold text-slate-400">{text}</p>
@@ -486,10 +471,8 @@ function Panel({ title, icon: Icon, children }) {
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
           <Icon size={22} />
         </div>
-
         <h2 className="text-xl font-black text-slate-950">{title}</h2>
       </div>
-
       {children}
     </div>
   );
@@ -509,11 +492,7 @@ function Status({ status }) {
   };
 
   return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-black ${
-        config[status] || config.pending
-      }`}
-    >
+    <span className={`rounded-full px-3 py-1 text-xs font-black ${config[status] || config.pending}`}>
       {label[status] || "À vérifier"}
     </span>
   );
@@ -527,13 +506,9 @@ function AdminRow({ title, text, tag, warning }) {
         <p className="mt-1 text-sm text-slate-600">{text}</p>
       </div>
 
-      <span
-        className={`rounded-full px-3 py-1 text-xs font-black ${
-          warning
-            ? "bg-amber-100 text-amber-700"
-            : "bg-emerald-100 text-emerald-700"
-        }`}
-      >
+      <span className={`rounded-full px-3 py-1 text-xs font-black ${
+        warning ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+      }`}>
         {tag}
       </span>
     </div>
