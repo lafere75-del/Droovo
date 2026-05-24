@@ -42,9 +42,13 @@ export default function VerificationPage() {
       throw new Error("Fichier manquant.");
     }
 
+    const extension = file.name.split(".").pop();
+
+    const finalPath = `${path}.${extension}`;
+
     const { error } = await supabase.storage
       .from("identity-documents")
-      .upload(path, file, {
+      .upload(finalPath, file, {
         upsert: true,
       });
 
@@ -52,7 +56,7 @@ export default function VerificationPage() {
       throw error;
     }
 
-    return path;
+    return finalPath;
   }
 
   async function handleSubmit(e) {
