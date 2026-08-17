@@ -4,6 +4,23 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
+const ALLOWED_DOCUMENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "application/pdf",
+]);
+
+function getSafeExtension(file) {
+  const extensions = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "application/pdf": "pdf",
+  };
+
+  return extensions[file.type];
+}
+
 export default function VerificationPage() {
   const router = useRouter();
 
@@ -42,12 +59,21 @@ export default function VerificationPage() {
       throw new Error("Fichier manquant.");
     }
 
-    const finalPath = `${path}.jpg`;
+    if (!ALLOWED_DOCUMENT_TYPES.has(file.type)) {
+      throw new Error("Format refusé. Utilisez un fichier JPG, PNG ou PDF.");
+    }
+
+    if (file.size > MAX_DOCUMENT_SIZE) {
+      throw new Error("Chaque document doit faire moins de 10 Mo.");
+    }
+
+    const finalPath = `${path}.${getSafeExtension(file)}`;
 
     const { error } = await supabase.storage
       .from("identity-documents")
       .upload(finalPath, file, {
         upsert: true,
+        contentType: file.type,
       });
 
     if (error) {

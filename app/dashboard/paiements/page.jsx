@@ -483,7 +483,7 @@ function PaymentCard({ booking, mode, onPay }) {
               onClick={onPay}
               className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
             >
-              Payer maintenant
+              Simuler le paiement (test)
             </button>
           )}
       </div>

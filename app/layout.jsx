@@ -4,7 +4,6 @@ export const metadata = {
   title: "Droovo",
   description: "Livraison collaborative entre particuliers",
   manifest: "/manifest.json",
-  themeColor: "#000000",
   appleWebApp: {
     capable: true,
     title: "Droovo",
@@ -14,6 +13,10 @@ export const metadata = {
     icon: "/icon-192.png",
     apple: "/icon-192.png",
   },
+};
+
+export const viewport = {
+  themeColor: "#000000",
 };
 
 export default function RootLayout({ children }) {

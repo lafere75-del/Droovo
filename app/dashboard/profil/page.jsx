@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-);
+import { supabase } from "../../../lib/supabaseClient";
 
 export default function ProfilPage() {
   const [isEditing, setIsEditing] = useState(false);
@@ -37,10 +32,18 @@ export default function ProfilPage() {
   async function fetchProfile() {
     setLoading(true);
 
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData.user;
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .limit(1)
+      .eq("id", user.id)
       .maybeSingle();
 
     if (error) {
@@ -68,6 +71,14 @@ export default function ProfilPage() {
   }
 
   async function saveProfile() {
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData.user;
+
+    if (!user) {
+      alert("Vous devez être connecté.");
+      return;
+    }
+
     const payload = {
       first_name: profile.first_name,
       last_name: profile.last_name,
@@ -77,9 +88,6 @@ export default function ProfilPage() {
       photo_url: profile.photo_url,
       travel_mode: profile.travel_mode,
       bio: profile.bio,
-      verified_identity: profile.verified_identity,
-      verified_email: profile.verified_email,
-      verified_phone: profile.verified_phone,
     };
 
     let error;
@@ -88,13 +96,13 @@ export default function ProfilPage() {
       const result = await supabase
         .from("profiles")
         .update(payload)
-        .eq("id", profileId);
+        .eq("id", user.id);
 
       error = result.error;
     } else {
       const result = await supabase
         .from("profiles")
-        .insert([payload])
+        .insert([{ ...payload, id: user.id }])
         .select()
         .single();
 
