@@ -28,6 +28,24 @@ export default function PaiementsPage() {
     loadPayments();
   }, []);
 
+  useEffect(() => {
+    async function syncStripeReturn() {
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("session_id");
+      if (params.get("payment") !== "success" || !sessionId) return;
+
+      try {
+        await callStripe("/api/stripe/sync", { sessionId });
+        await loadPayments();
+        window.history.replaceState({}, "", "/dashboard/paiements");
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    syncStripeReturn();
+  }, []);
+
   async function loadPayments() {
     setLoading(true);
 
