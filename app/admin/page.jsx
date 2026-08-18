@@ -31,6 +31,11 @@ export default function AdminPage() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [pendingUsers, setPendingUsers] = useState(0);
   const [verifiedUsers, setVerifiedUsers] = useState(0);
+  const [activePackages, setActivePackages] = useState(0);
+  const [activeTrips, setActiveTrips] = useState(0);
+  const [grossVolume, setGrossVolume] = useState(0);
+  const [commissions, setCommissions] = useState(0);
+  const [todayActivity, setTodayActivity] = useState(0);
 
   const limit = 20;
   const from = (page - 1) * limit;
@@ -93,11 +98,27 @@ export default function AdminPage() {
       .select("*", { count: "exact", head: true })
       .eq("identity_status", "verified");
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [{ count: packageCount = 0 }, { count: tripCount = 0 }, { data: payments = [] }, { count: todayProfiles = 0 }, { count: todayPackages = 0 }, { count: todayTrips = 0 }] = await Promise.all([
+      supabase.from("packages").select("*", { count: "exact", head: true }).eq("status", "active"),
+      supabase.from("trips").select("*", { count: "exact", head: true }).eq("status", "active"),
+      supabase.from("payments").select("amount,droovo_commission").eq("payment_status", "paid"),
+      supabase.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString()),
+      supabase.from("packages").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString()),
+      supabase.from("trips").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString()),
+    ]);
+
     setProfiles(profilesData || []);
     setCount(profilesCount || 0);
     setTotalUsers(total || 0);
     setPendingUsers(pending || 0);
     setVerifiedUsers(verified || 0);
+    setActivePackages(packageCount || 0);
+    setActiveTrips(tripCount || 0);
+    setGrossVolume(payments.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+    setCommissions(payments.reduce((sum, item) => sum + Number(item.droovo_commission || 0), 0));
+    setTodayActivity((todayProfiles || 0) + (todayPackages || 0) + (todayTrips || 0));
   }
 
   async function openVerification(userId) {
@@ -253,14 +274,14 @@ export default function AdminPage() {
           <Stat icon={Users} label="Utilisateurs" value={totalUsers} />
           <Stat icon={ShieldAlert} label="À vérifier" value={pendingUsers} warning />
           <Stat icon={BadgeCheck} label="Comptes validés" value={verifiedUsers} />
-          <Stat icon={CreditCard} label="Commissions" value="0 €" />
+          <Stat icon={CreditCard} label="Commissions" value={`${commissions.toFixed(2)} €`} />
         </section>
 
         <section className="mt-6 grid gap-5 lg:grid-cols-4">
-          <QuickCard icon={Package} title="Colis actifs" value="0" text="Table packages à connecter" />
-          <QuickCard icon={Car} title="Trajets actifs" value="0" text="Table trips à connecter" />
-          <QuickCard icon={TrendingUp} title="Volume brut" value="0 €" text="Stripe à connecter" />
-          <QuickCard icon={Clock3} title="Aujourd’hui" value="0" text="Activité du jour" />
+          <QuickCard icon={Package} title="Colis actifs" value={activePackages} text="Colis actuellement disponibles" />
+          <QuickCard icon={Car} title="Trajets actifs" value={activeTrips} text="Trajets actuellement disponibles" />
+          <QuickCard icon={TrendingUp} title="Volume brut" value={`${grossVolume.toFixed(2)} €`} text="Paiements confirmés" />
+          <QuickCard icon={Clock3} title="Aujourd’hui" value={todayActivity} text="Nouvelles activités" />
         </section>
 
         <section className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">

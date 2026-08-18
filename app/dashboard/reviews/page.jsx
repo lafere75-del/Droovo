@@ -17,9 +17,8 @@ export default function ReviewsPage() {
 
   async function loadProfiles() {
     const { data } = await supabase
-      .from("profiles")
-      .select("id,email")
-      .neq("role", "admin");
+      .from("directory_profiles")
+      .select("id,fullname");
 
     setProfiles(data || []);
   }
@@ -82,7 +81,7 @@ export default function ReviewsPage() {
                 key={profile.id}
                 value={profile.id}
               >
-                {profile.email}
+                {profile.fullname || "Utilisateur Droovo"}
               </option>
             ))}
           </select>

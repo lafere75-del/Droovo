@@ -1,23 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { supabase } from "../../../../lib/supabaseClient";
 
 export default function SuiviPage({ params }) {
-  const { id } = params;
+  const { id } = use(params);
 
   const [booking, setBooking] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
     loadTracking();
-  }, []);
+  }, [id]);
 
   async function loadTracking() {
     setLoading(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    setUserId(user?.id || null);
 
     const { data: bookingData, error } = await supabase
       .from("bookings")
@@ -72,12 +76,6 @@ export default function SuiviPage({ params }) {
       setActionLoading(false);
       return;
     }
-
-    await supabase.from("tracking_events").insert({
-      booking_id: id,
-      status,
-      message,
-    });
 
     await loadTracking();
     setActionLoading(false);
@@ -188,6 +186,7 @@ export default function SuiviPage({ params }) {
             />
           </div>
 
+          {userId === booking.driver_id && booking.status === "accepted" && (
           <div className="mt-8 rounded-2xl bg-slate-50 p-5">
             <h2 className="text-xl font-black text-slate-950">
               Mettre à jour le suivi
@@ -200,7 +199,7 @@ export default function SuiviPage({ params }) {
 
             <div className="mt-5 flex flex-wrap gap-3">
               <button
-                disabled={actionLoading || currentStatus === "picked_up"}
+                disabled={actionLoading || currentStatus !== "booking_created"}
                 onClick={() =>
                   updateTracking("picked_up", "Le colis a été récupéré.")
                 }
@@ -210,7 +209,7 @@ export default function SuiviPage({ params }) {
               </button>
 
               <button
-                disabled={actionLoading || currentStatus === "in_transit"}
+                disabled={actionLoading || currentStatus !== "picked_up"}
                 onClick={() =>
                   updateTracking(
                     "in_transit",
@@ -223,7 +222,7 @@ export default function SuiviPage({ params }) {
               </button>
 
               <button
-                disabled={actionLoading || currentStatus === "delivered"}
+                disabled={actionLoading || currentStatus !== "in_transit"}
                 onClick={() =>
                   updateTracking("delivered", "Le colis a été livré.")
                 }
@@ -233,6 +232,7 @@ export default function SuiviPage({ params }) {
               </button>
             </div>
           </div>
+          )}
         </section>
 
         <section className="mt-8 rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-emerald-100">

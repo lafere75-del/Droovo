@@ -23,8 +23,9 @@ export default function SignupPage() {
       }
 
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim().toLowerCase(),
         password,
+        options: { data: { fullname: fullname.trim() } },
       });
 
       if (error) {
@@ -39,21 +40,13 @@ export default function SignupPage() {
         return;
       }
 
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: userId,
-        fullname,
-        email,
-        role: "user",
-        identity_status: "pending",
-      });
-
-      if (profileError) {
-        alert("Compte créé, mais profil non enregistré : " + profileError.message);
-        return;
+      if (data.session) {
+        await supabase.from("profiles").update({ fullname: fullname.trim() }).eq("id", userId);
+        router.push("/dashboard");
+      } else {
+        alert("Compte créé. Consultez votre e-mail pour confirmer l’inscription.");
+        router.push("/login");
       }
-
-      alert("Compte créé avec succès.");
-      router.push("/dashboard");
     } finally {
       setLoading(false);
     }

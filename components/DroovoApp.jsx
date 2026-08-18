@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { calculatePricing } from "../lib/pricing";
 import { supabase } from "../lib/supabaseClient";
 import {
   ArrowRight,
@@ -112,43 +113,7 @@ export default function DroovoApp() {
     setLivePackages(packagesData || []);
   }
 
-  const pricing = useMemo(() => {
-    const laposteRates = [
-      { maxWeight: 0.5, price: 7.59 },
-      { maxWeight: 1, price: 9.59 },
-      { maxWeight: 2, price: 11.19 },
-      { maxWeight: 5, price: 17.39 },
-      { maxWeight: 10, price: 25.29 },
-      { maxWeight: 15, price: 31.99 },
-      { maxWeight: 30, price: 39.59 },
-    ];
-
-    const poste =
-      laposteRates.find((rate) => weight <= rate.maxWeight)?.price || 39.59;
-
-    let droovoRate = 0.75;
-
-    if (distance < 150) {
-      droovoRate = 0.7;
-    } else if (distance > 700) {
-      droovoRate = 0.8;
-    }
-
-    const total = Math.max(4.9, poste * droovoRate);
-    const commission = total * 0.22;
-    const driver = total - commission;
-    const saving = poste - total;
-    const savingPercent = (saving / poste) * 100;
-
-    return {
-      total: total.toFixed(2),
-      commission: commission.toFixed(2),
-      driver: driver.toFixed(2),
-      poste: poste.toFixed(2),
-      saving: saving.toFixed(2),
-      savingPercent: savingPercent.toFixed(0),
-    };
-  }, [weight, distance]);
+  const pricing = useMemo(() => calculatePricing(weight, distance), [weight, distance]);
 
   const accountHref = currentUserRole === "admin" ? "/admin" : "/dashboard";
 
@@ -399,10 +364,10 @@ export default function DroovoApp() {
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
-              Marketplace
+              Exemples
             </p>
             <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
-              Colis disponibles sur ton trajet
+              Exemples de colis sur ton trajet
             </h2>
             <p className="mt-3 max-w-2xl text-slate-600">
               Une interface claire pour aider le livreur à comprendre

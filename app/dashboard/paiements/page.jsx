@@ -159,34 +159,8 @@ export default function PaiementsPage() {
     await loadPayments();
   }
 
-  async function simulatePayment(booking) {
-    const price = Number(booking.packages?.price || 0);
-    const platformFee = Number((price * 0.22).toFixed(2));
-    const driverAmount = Number((price - platformFee).toFixed(2));
-
-    const { error } = await supabase
-      .from("bookings")
-      .update({
-        payment_status: "paid",
-        platform_fee: platformFee,
-        driver_amount: driverAmount,
-        tracking_status: "paid",
-      })
-      .eq("id", booking.id);
-
-    if (error) {
-      alert("Erreur paiement : " + error.message);
-      return;
-    }
-
-    await supabase.from("tracking_events").insert({
-      booking_id: booking.id,
-      status: "paid",
-      message: "Paiement enregistré",
-    });
-
-    alert("Paiement simulé avec succès.");
-    loadPayments();
+  function simulatePayment() {
+    alert("Le paiement sécurisé sera disponible dès l’activation de Stripe. Aucun débit n’a été effectué.");
   }
 
   if (loading) {
@@ -400,7 +374,7 @@ export default function PaiementsPage() {
                 key={booking.id}
                 booking={booking}
                 mode="sender"
-                onPay={() => simulatePayment(booking)}
+                onPay={simulatePayment}
               />
             ))}
           </div>

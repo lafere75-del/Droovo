@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, ImagePlus } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
+import { calculatePricing } from "../../../lib/pricing";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -23,33 +24,7 @@ export default function PublierColisPage() {
 
   const [loading, setLoading] = useState(false);
 
-  const pricing = useMemo(() => {
-    const laposteRates = [
-      { maxWeight: 0.5, price: 7.59 },
-      { maxWeight: 1, price: 9.59 },
-      { maxWeight: 2, price: 11.19 },
-      { maxWeight: 5, price: 17.39 },
-      { maxWeight: 10, price: 25.29 },
-      { maxWeight: 15, price: 31.99 },
-      { maxWeight: 30, price: 39.59 },
-    ];
-
-    const laposte =
-      laposteRates.find((rate) => weight <= rate.maxWeight)?.price || 39.59;
-
-    const droovoPrice = Math.max(4.9, laposte * 0.75);
-    const commission = droovoPrice * 0.22;
-    const driverGain = droovoPrice - commission;
-    const saving = laposte - droovoPrice;
-
-    return {
-      laposte: laposte.toFixed(2),
-      droovoPrice: droovoPrice.toFixed(2),
-      commission: commission.toFixed(2),
-      driverGain: driverGain.toFixed(2),
-      saving: saving.toFixed(2),
-    };
-  }, [weight]);
+  const pricing = useMemo(() => calculatePricing(weight), [weight]);
 
   async function handleImageChange(e) {
     const file = e.target.files?.[0];
