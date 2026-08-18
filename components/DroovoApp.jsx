@@ -57,11 +57,20 @@ const parcels = [
 ];
 
 const comparison = [
-  ["Prix 1 kg", "7,20 €", "9,59 €", "20 € et +"],
-  ["Prix 5 kg", "12,90 €", "17,39 €", "30 € et +"],
-  ["Économie client", "Environ -25%", "Tarif standard", "Souvent plus cher"],
-  ["Gain livreur", "5 à 12 € / colis", "Non", "Non"],
-  ["Impact", "Trajet déjà prévu", "Réseau logistique", "Transport dédié"],
+  ["Prix 1 kg TTC", "7,20 €", "9,59 €", "Dès 12,52 €*"],
+  ["Prix 5 kg TTC", "12,90 €", "17,39 €", "Dès 15,94 €*"],
+  ["Délai indicatif", "Jour même possible", "Quelques jours", "Le lendemain"],
+  ["Remise", "Directe au destinataire", "À domicile", "À domicile"],
+  ["Fonctionnement", "Trajet déjà prévu", "Réseau logistique", "Transport dédié"],
+];
+
+const deliverySteps = [
+  ["1", "Publier", "Le client décrit son colis et voit le prix avant de s’engager."],
+  ["2", "Choisir", "Il compare les propositions et choisit lui-même son transporteur."],
+  ["3", "Payer", "Le paiement Stripe sera demandé seulement après ce choix."],
+  ["4", "Remettre", "Un code de prise en charge confirmera la remise en main propre."],
+  ["5", "Livrer", "Un second code confirmera la réception à destination."],
+  ["6", "Rémunérer", "Après validation, le transporteur recevra son gain, commission déduite."],
 ];
 
 export default function DroovoApp() {
@@ -297,6 +306,33 @@ export default function DroovoApp() {
         </div>
       </section>
 
+      <section id="fonctionnement" className="mx-auto max-w-7xl px-6 py-16">
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+          Comment ça marche ?
+        </p>
+        <h2 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+          De la publication au paiement, étape par étape.
+        </h2>
+        <p className="mt-4 max-w-3xl text-slate-600">
+          Le client garde le contrôle : il choisit son transporteur avant de payer.
+          Le gain n’est versé qu’après confirmation de la livraison.
+        </p>
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {deliverySteps.map(([number, title, text]) => (
+            <div key={number} className="rounded-[1.75rem] bg-white p-6 shadow-sm ring-1 ring-emerald-100">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-black text-white">
+                {number}
+              </span>
+              <h3 className="mt-5 text-xl font-black text-slate-950">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-5 rounded-2xl bg-amber-50 px-5 py-4 text-sm font-bold text-amber-900 ring-1 ring-amber-200">
+          Paiement et codes sécurisés : activation prévue avec Stripe. Aucun paiement réel n’est demandé actuellement.
+        </p>
+      </section>
+
       <section id="fil-actualite" className="mx-auto max-w-7xl px-6 py-16">
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
@@ -481,7 +517,7 @@ export default function DroovoApp() {
             <span>Critère</span>
             <span className="text-emerald-300">Droovo</span>
             <span>La Poste</span>
-            <span>Express</span>
+            <span>Express domicile</span>
           </div>
           {comparison.map((row) => (
             <div
@@ -505,6 +541,9 @@ export default function DroovoApp() {
             </div>
           ))}
         </div>
+        <p className="mt-3 text-xs leading-5 text-slate-500">
+          Tarifs publics indicatifs constatés en France métropolitaine. *Équivalent TTC calculé à partir du tarif Chronopost Chrono 13 affiché hors taxes, hors suppléments. Livraison Droovo le jour même sous réserve d’un trajet compatible accepté.
+        </p>
       </section>
 
       <section id="securite" className="bg-white py-16">
@@ -515,16 +554,16 @@ export default function DroovoApp() {
               Pour le livreur
             </h2>
             <p className="mt-4 text-lg leading-8 text-emerald-50">
-              Un particulier qui fait déjà un trajet peut gagner entre 5 € et
-              12 € par colis. Sur plusieurs colis, le trajet devient réellement
-              rentable sans créer un déplacement supplémentaire.
+              Un particulier qui fait déjà un trajet reçoit une rémunération
+              calculée selon le colis et le trajet. Sur plusieurs colis, il peut
+              contribuer à ses frais sans créer un déplacement supplémentaire.
             </p>
             <div className="mt-7 rounded-3xl bg-white/15 p-5 ring-1 ring-white/20">
               <p className="text-sm text-emerald-50/80">
-                Exemple de rentabilité
+                Principe de rémunération
               </p>
               <p className="mt-2 text-3xl font-black">
-                20 colis/mois = 110 € à 240 €
+                Chaque livraison validée génère un gain
               </p>
             </div>
           </div>
@@ -537,9 +576,9 @@ export default function DroovoApp() {
             <div className="mt-7 grid gap-4">
               {[
                 "Vérification d’identité",
-                "Paiement sécurisé avant mise en relation",
-                "Code de remise à la livraison",
-                "Validation par l’expéditeur",
+                "Choix du transporteur par le client",
+                "Double code de remise et de livraison (à venir)",
+                "Paiement Stripe avant mise en relation (à venir)",
                 "Notation des utilisateurs",
               ].map((item) => (
                 <div

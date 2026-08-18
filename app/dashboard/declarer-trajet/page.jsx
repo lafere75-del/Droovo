@@ -1,21 +1,41 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { calculatePricing } from "../../../lib/pricing";
+import AddressAutocomplete, { authHeaders } from "../../../components/AddressAutocomplete";
 
 export default function DeclarerTrajetPage() {
   const router = useRouter();
 
   const [fromCity, setFromCity] = useState("");
   const [toCity, setToCity] = useState("");
+  const [fromPlace, setFromPlace] = useState(null);
+  const [toPlace, setToPlace] = useState(null);
+  const [routeInfo, setRouteInfo] = useState(null);
   const [date, setDate] = useState("");
   const [availableWeight, setAvailableWeight] = useState(5);
 
   const [loading, setLoading] = useState(false);
 
-  const pricing = useMemo(() => calculatePricing(availableWeight), [availableWeight]);
+  const distanceKm = routeInfo ? routeInfo.distanceMeters / 1000 : null;
+  const pricing = useMemo(() => calculatePricing(availableWeight, distanceKm), [availableWeight, distanceKm]);
+
+  useEffect(() => {
+    if (!fromPlace || !toPlace) { setRouteInfo(null); return; }
+    let cancelled = false;
+    async function calculateRoute() {
+      const response = await fetch("/api/maps/route", {
+        method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+        body: JSON.stringify({ originPlaceId: fromPlace.placeId, destinationPlaceId: toPlace.placeId }),
+      });
+      const data = await response.json();
+      if (!cancelled) setRouteInfo(response.ok ? data : null);
+    }
+    calculateRoute();
+    return () => { cancelled = true; };
+  }, [fromPlace, toPlace]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -32,20 +52,25 @@ export default function DeclarerTrajetPage() {
         return;
       }
 
-      const { error } = await supabase.from("trips").insert({
-        user_id: user.id,
+      if (!fromPlace || !toPlace || !routeInfo) {
+        alert("Sélectionnez les deux adresses proposées afin de calculer la distance réelle.");
+        return;
+      }
 
-        departure_city: fromCity,
-        arrival_city: toCity,
-
-        trip_date: date,
-        available_weight: availableWeight,
-        estimated_gain: pricing.driverGain,
-        status: "active",
+      const response = await fetch("/api/trips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+        body: JSON.stringify({
+          originPlaceId: fromPlace.placeId,
+          destinationPlaceId: toPlace.placeId,
+          tripDate: date,
+          availableWeight,
+        }),
       });
+      const result = await response.json();
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        throw new Error(result.error || "Publication impossible.");
       }
 
       alert("Trajet publié avec succès.");
@@ -53,9 +78,9 @@ export default function DeclarerTrajetPage() {
       router.push("/dashboard");
     } catch (error) {
       alert(error.message);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (
@@ -88,24 +113,24 @@ export default function DeclarerTrajetPage() {
           <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
             <form onSubmit={handleSubmit} className="grid gap-5">
               <div className="grid gap-5 md:grid-cols-2">
-                <input
-                  required
-                  type="text"
+                <AddressAutocomplete
                   placeholder="Ville de départ"
                   value={fromCity}
-                  onChange={(e) => setFromCity(e.target.value)}
-                  className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+                  onChange={setFromCity}
+                  onSelect={setFromPlace}
                 />
 
-                <input
-                  required
-                  type="text"
+                <AddressAutocomplete
                   placeholder="Ville d’arrivée"
                   value={toCity}
-                  onChange={(e) => setToCity(e.target.value)}
-                  className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+                  onChange={setToCity}
+                  onSelect={setToPlace}
                 />
               </div>
+
+              {routeInfo && <p className="rounded-2xl bg-emerald-50 px-5 py-4 text-sm font-black text-emerald-800">
+                Distance réelle : {(routeInfo.distanceMeters / 1000).toFixed(0)} km · environ {Math.max(1, Math.round(routeInfo.durationSeconds / 60))} min
+              </p>}
 
               <input
                 required

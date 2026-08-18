@@ -70,7 +70,7 @@ export default function DemandesPage() {
 
       alert(
         status === "accepted"
-          ? "Demande acceptée."
+          ? "Demande acceptée. L’expéditeur pourra ensuite confirmer son choix et payer dès l’activation de Stripe."
           : "Demande refusée."
       );
 
@@ -153,9 +153,10 @@ export default function DemandesPage() {
               Transporteurs intéressés par mes colis
             </h2>
 
-            <p className="mt-1 text-slate-600">
-              Des livreurs souhaitent transporter vos colis.
-            </p>
+          <p className="mt-1 text-slate-600">
+              Comparez les propositions avant de choisir. Aucun paiement réel
+              n’est demandé tant que Stripe n’est pas activé.
+          </p>
           </div>
 
           <div className="grid gap-5">

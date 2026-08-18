@@ -1,0 +1,74 @@
+import { requireApiUser } from "../../../../lib/apiAuth";
+import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { getStripe, stripeError } from "../../../../lib/stripeServer";
+
+export async function POST(request) {
+  const auth = await requireApiUser(request);
+  if (auth.response) return auth.response;
+
+  try {
+    const { bookingId } = await request.json();
+    const { data: booking } = await auth.client
+      .from("bookings")
+      .select("id,sender_id,driver_id,status,tracking_status,payment_status")
+      .eq("id", bookingId)
+      .eq("sender_id", auth.user.id)
+      .maybeSingle();
+    if (!booking) return Response.json({ error: "Livraison introuvable." }, { status: 404 });
+    if (booking.tracking_status !== "delivered") return Response.json({ error: "Le transporteur doit d’abord déclarer le colis livré." }, { status: 409 });
+    if (booking.payment_status !== "paid") return Response.json({ error: "Le paiement n’est pas confirmé." }, { status: 409 });
+
+    const admin = getSupabaseAdmin();
+    const { data: payment } = await admin.from("payments").select("*").eq("booking_id", booking.id).maybeSingle();
+    if (!payment) return Response.json({ error: "Paiement introuvable." }, { status: 404 });
+    if (payment.stripe_transfer_id) return Response.json({ status: "already_released" });
+
+    const { data: settings } = await admin.from("payment_settings")
+      .select("stripe_connect_account_id")
+      .eq("user_id", booking.driver_id).maybeSingle();
+    if (!settings?.stripe_connect_account_id) {
+      return Response.json({ error: "Le transporteur doit terminer son inscription Stripe." }, { status: 409 });
+    }
+
+    const stripe = getStripe();
+    const account = await stripe.v2.core.accounts.retrieve(settings.stripe_connect_account_id, {
+      include: ["configuration.recipient"],
+    });
+    const recipient = account.configuration?.recipient;
+    if (recipient?.capabilities?.stripe_balance?.stripe_transfers?.status !== "active") {
+      return Response.json({ error: "Le compte de versement du transporteur n’est pas encore actif." }, { status: 409 });
+    }
+
+    const amountCents = Number(payment.amount_cents);
+    const commissionCents = Number(payment.commission_cents);
+    const processingFeeCents = Number(payment.processing_fee_cents || 0);
+    const transferCents = amountCents - commissionCents - processingFeeCents;
+    if (!Number.isInteger(transferCents) || transferCents <= 0) throw new Error("INVALID_TRANSFER_AMOUNT");
+
+    const transfer = await stripe.transfers.create({
+      amount: transferCents,
+      currency: payment.currency || "eur",
+      destination: settings.stripe_connect_account_id,
+      transfer_group: `booking_${booking.id}`,
+      metadata: { booking_id: booking.id },
+    }, { idempotencyKey: `delivery-${booking.id}` });
+
+    await admin.from("payments").update({
+      driver_gain: transferCents / 100,
+      driver_amount_cents: transferCents,
+      payout_status: "transferred",
+      stripe_transfer_id: transfer.id,
+      released_at: new Date().toISOString(),
+    }).eq("booking_id", booking.id);
+    await admin.from("bookings").update({
+      status: "completed",
+      tracking_status: "payout",
+      driver_amount: transferCents / 100,
+      platform_fee: commissionCents / 100,
+    }).eq("id", booking.id);
+
+    return Response.json({ status: "released", amount: transferCents / 100 });
+  } catch (error) {
+    return stripeError(error);
+  }
+}

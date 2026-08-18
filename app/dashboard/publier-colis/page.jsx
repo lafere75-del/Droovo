@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, ImagePlus } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 import { calculatePricing } from "../../../lib/pricing";
+import AddressAutocomplete, { authHeaders } from "../../../components/AddressAutocomplete";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -16,15 +17,39 @@ export default function PublierColisPage() {
   const [description, setDescription] = useState("");
   const [fromCity, setFromCity] = useState("");
   const [toCity, setToCity] = useState("");
+  const [fromPlace, setFromPlace] = useState(null);
+  const [toPlace, setToPlace] = useState(null);
+  const [routeInfo, setRouteInfo] = useState(null);
   const [desiredDate, setDesiredDate] = useState("");
   const [weight, setWeight] = useState(3);
+  const [recipientIsSender, setRecipientIsSender] = useState(true);
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
+  const [recipientConsent, setRecipientConsent] = useState(false);
 
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
 
   const [loading, setLoading] = useState(false);
 
-  const pricing = useMemo(() => calculatePricing(weight), [weight]);
+  const distanceKm = routeInfo ? routeInfo.distanceMeters / 1000 : null;
+  const pricing = useMemo(() => calculatePricing(weight, distanceKm), [weight, distanceKm]);
+
+  useEffect(() => {
+    if (!fromPlace || !toPlace) { setRouteInfo(null); return; }
+    let cancelled = false;
+    async function calculateRoute() {
+      const response = await fetch("/api/maps/route", {
+        method: "POST", headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+        body: JSON.stringify({ originPlaceId: fromPlace.placeId, destinationPlaceId: toPlace.placeId }),
+      });
+      const data = await response.json();
+      if (!cancelled) setRouteInfo(response.ok ? data : null);
+    }
+    calculateRoute();
+    return () => { cancelled = true; };
+  }, [fromPlace, toPlace]);
 
   async function handleImageChange(e) {
     const file = e.target.files?.[0];
@@ -85,6 +110,12 @@ export default function PublierColisPage() {
       return;
     }
 
+    if (!fromPlace || !toPlace || !routeInfo) {
+      alert("Sélectionnez les deux adresses proposées afin de calculer la distance réelle.");
+      setLoading(false);
+      return;
+    }
+
     let imageUrl = null;
 
     try {
@@ -95,29 +126,28 @@ export default function PublierColisPage() {
       return;
     }
 
-    const { error } = await supabase.from("packages").insert({
-      user_id: user.id,
-
-      title,
-      description,
-
-      departure_city: fromCity,
-      arrival_city: toCity,
-
-      desired_date: desiredDate,
-
-      weight,
-      price: pricing.droovoPrice,
-
-      image_url: imageUrl,
-
-      status: "active",
+    const response = await fetch("/api/packages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await authHeaders()) },
+      body: JSON.stringify({
+        title, description, desiredDate, weight, imageUrl,
+        originPlaceId: fromPlace.placeId,
+        destinationPlaceId: toPlace.placeId,
+        recipient: {
+          isSender: recipientIsSender,
+          fullName: recipientIsSender ? null : recipientName,
+          email: recipientIsSender ? null : recipientEmail,
+          phone: recipientIsSender ? null : recipientPhone,
+          consentConfirmed: recipientIsSender || recipientConsent,
+        },
+      }),
     });
+    const result = await response.json();
 
     setLoading(false);
 
-    if (error) {
-      alert("Erreur : " + error.message);
+    if (!response.ok) {
+      alert("Erreur : " + (result.error || "publication impossible"));
       return;
     }
 
@@ -172,23 +202,77 @@ export default function PublierColisPage() {
               />
 
               <div className="grid gap-5 md:grid-cols-2">
-                <input
-                  required
-                  type="text"
+                <AddressAutocomplete
                   placeholder="Ville de départ"
                   value={fromCity}
-                  onChange={(e) => setFromCity(e.target.value)}
-                  className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+                  onChange={setFromCity}
+                  onSelect={setFromPlace}
                 />
 
-                <input
-                  required
-                  type="text"
+                <AddressAutocomplete
                   placeholder="Ville d'arrivée"
                   value={toCity}
-                  onChange={(e) => setToCity(e.target.value)}
-                  className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+                  onChange={setToCity}
+                  onSelect={setToPlace}
                 />
+              </div>
+
+              {routeInfo && <p className="rounded-2xl bg-emerald-50 px-5 py-4 text-sm font-black text-emerald-800">
+                Distance réelle : {(routeInfo.distanceMeters / 1000).toFixed(0)} km · environ {Math.max(1, Math.round(routeInfo.durationSeconds / 60))} min
+              </p>}
+
+              <div className="rounded-2xl border border-emerald-100 p-5">
+                <label className="flex items-center gap-3 font-black text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={recipientIsSender}
+                    onChange={(e) => setRecipientIsSender(e.target.checked)}
+                    className="h-5 w-5 accent-emerald-600"
+                  />
+                  Je suis aussi le destinataire
+                </label>
+                <p className="mt-2 text-sm text-slate-500">
+                  Sinon, le destinataire recevra plus tard le code secret permettant de confirmer la livraison.
+                </p>
+
+                {!recipientIsSender && (
+                  <div className="mt-5 grid gap-4">
+                    <input
+                      required
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                      placeholder="Nom complet du destinataire"
+                      className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+                    />
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <input
+                        type="email"
+                        value={recipientEmail}
+                        onChange={(e) => setRecipientEmail(e.target.value)}
+                        placeholder="Email du destinataire"
+                        className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+                      />
+                      <input
+                        type="tel"
+                        value={recipientPhone}
+                        onChange={(e) => setRecipientPhone(e.target.value)}
+                        placeholder="Téléphone du destinataire"
+                        className="rounded-2xl border border-emerald-100 px-5 py-4 outline-none focus:border-emerald-600"
+                      />
+                    </div>
+                    <p className="text-xs font-bold text-slate-500">Renseignez au moins un email ou un téléphone.</p>
+                    <label className="flex items-start gap-3 text-sm font-bold text-slate-600">
+                      <input
+                        required
+                        type="checkbox"
+                        checked={recipientConsent}
+                        onChange={(e) => setRecipientConsent(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 accent-emerald-600"
+                      />
+                      Je confirme être autorisé à transmettre ces coordonnées à Droovo pour organiser cette livraison.
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -304,8 +388,8 @@ export default function PublierColisPage() {
             </div>
 
             <p className="mt-6 text-sm leading-6 text-white/50">
-              Le prix est calculé automatiquement à partir du poids du colis,
-              avec un positionnement inférieur au tarif Colissimo indicatif.
+              Le prix est calculé automatiquement à partir du poids et de la
+              distance routière réelle, avec un positionnement inférieur au tarif Colissimo indicatif.
             </p>
           </aside>
         </div>

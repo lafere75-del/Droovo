@@ -8,6 +8,7 @@ export default function PaiementsPage() {
   const [senderBookings, setSenderBookings] = useState([]);
   const [driverBookings, setDriverBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stripeLoading, setStripeLoading] = useState(false);
 
   const [showCardForm, setShowCardForm] = useState(false);
   const [showRibForm, setShowRibForm] = useState(false);
@@ -159,8 +160,42 @@ export default function PaiementsPage() {
     await loadPayments();
   }
 
-  function simulatePayment() {
-    alert("Le paiement sécurisé sera disponible dès l’activation de Stripe. Aucun débit n’a été effectué.");
+  async function callStripe(path, body = {}) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Vous devez être connecté.");
+    const response = await fetch(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Action Stripe impossible.");
+    return result;
+  }
+
+  async function startPayment(bookingId) {
+    setStripeLoading(true);
+    try {
+      const { url } = await callStripe("/api/stripe/checkout", { bookingId });
+      window.location.assign(url);
+    } catch (error) {
+      alert(error.message);
+      setStripeLoading(false);
+    }
+  }
+
+  async function startConnectOnboarding() {
+    setStripeLoading(true);
+    try {
+      const { url } = await callStripe("/api/stripe/connect/onboarding");
+      window.location.assign(url);
+    } catch (error) {
+      alert(error.message);
+      setStripeLoading(false);
+    }
   }
 
   if (loading) {
@@ -204,7 +239,8 @@ export default function PaiementsPage() {
             </h2>
 
             <p className="mt-2 text-slate-600">
-              Ajoutez une carte bancaire pour payer vos livraisons.
+              Le paiement sera saisi directement dans l’interface sécurisée de
+              Stripe. Droovo ne demandera jamais votre numéro de carte ici.
             </p>
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
@@ -274,12 +310,9 @@ export default function PaiementsPage() {
             )}
 
             {!showCardForm && (
-              <button
-                onClick={() => setShowCardForm(true)}
-                className="mt-6 rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
-              >
-                {cardSaved ? "Modifier la carte" : "Ajouter une carte bancaire"}
-              </button>
+              <p className="mt-6 text-sm font-bold text-emerald-700">
+                La carte sera demandée uniquement au moment de payer une livraison.
+              </p>
             )}
           </div>
 
@@ -289,7 +322,8 @@ export default function PaiementsPage() {
             </h2>
 
             <p className="mt-2 text-slate-600">
-              Renseignez votre RIB pour recevoir vos encaissements.
+              Stripe Connect vérifiera le transporteur et recueillera ses
+              coordonnées bancaires dans son interface sécurisée.
             </p>
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
@@ -350,10 +384,11 @@ export default function PaiementsPage() {
 
             {!showRibForm && (
               <button
-                onClick={() => setShowRibForm(true)}
-                className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800"
+                onClick={startConnectOnboarding}
+                disabled={stripeLoading}
+                className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
               >
-                {ribSaved ? "Modifier mon RIB" : "Ajouter ou modifier mon RIB"}
+                {stripeLoading ? "Ouverture de Stripe…" : "Configurer mes versements"}
               </button>
             )}
           </div>
@@ -374,7 +409,8 @@ export default function PaiementsPage() {
                 key={booking.id}
                 booking={booking}
                 mode="sender"
-                onPay={simulatePayment}
+                onPay={() => startPayment(booking.id)}
+                actionLoading={stripeLoading}
               />
             ))}
           </div>
@@ -404,9 +440,9 @@ export default function PaiementsPage() {
   );
 }
 
-function PaymentCard({ booking, mode, onPay }) {
+function PaymentCard({ booking, mode, onPay, actionLoading = false }) {
   const price = Number(booking.packages?.price || 0);
-  const platformFee = Number(booking.platform_fee || price * 0.22).toFixed(2);
+  const platformFee = Number(booking.platform_fee || price * 0.25).toFixed(2);
   const driverAmount = Number(
     booking.driver_amount || price - platformFee
   ).toFixed(2);
@@ -433,7 +469,7 @@ function PaymentCard({ booking, mode, onPay }) {
           </p>
 
           <p className="mt-2 text-slate-500">
-            Gain livreur : {driverAmount} €
+            Gain transporteur estimé : {driverAmount} €
           </p>
         </div>
 
@@ -455,9 +491,10 @@ function PaymentCard({ booking, mode, onPay }) {
           booking.payment_status !== "paid" && (
             <button
               onClick={onPay}
-              className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
+              disabled={actionLoading}
+              className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
             >
-              Simuler le paiement (test)
+              {actionLoading ? "Ouverture du paiement…" : `Payer ${price.toFixed(2)} € avec Stripe`}
             </button>
           )}
       </div>
@@ -465,7 +502,7 @@ function PaymentCard({ booking, mode, onPay }) {
       {mode === "driver" && (
         <p className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-600">
           Le gain sera disponible après paiement de l’expéditeur et validation de
-          la livraison.
+          la livraison. Les frais de paiement par carte seront déduits du gain final.
         </p>
       )}
     </div>
