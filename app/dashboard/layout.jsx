@@ -22,6 +22,17 @@ export default function DashboardLayout({ children }) {
         return;
       }
 
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (profile?.role === "admin") {
+        router.replace("/admin");
+        return;
+      }
+
       setAuthorized(true);
     }
 
@@ -50,4 +61,3 @@ export default function DashboardLayout({ children }) {
 
   return children;
 }
-
