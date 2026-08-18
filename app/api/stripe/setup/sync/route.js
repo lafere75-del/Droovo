@@ -7,24 +7,23 @@ export async function POST(request) {
   if (auth.response) return auth.response;
 
   try {
-    const { sessionId } = await request.json();
-    if (!sessionId?.startsWith("cs_")) {
-      return Response.json({ error: "Session Stripe invalide." }, { status: 400 });
+    const { setupIntentId } = await request.json();
+    if (!setupIntentId?.startsWith("seti_")) {
+      return Response.json({ error: "Enregistrement Stripe invalide." }, { status: 400 });
     }
 
     const stripe = getStripe();
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["setup_intent.payment_method"],
+    const setupIntent = await stripe.setupIntents.retrieve(setupIntentId, {
+      expand: ["payment_method"],
     });
-    if (session.mode !== "setup" || session.status !== "complete") {
+    if (setupIntent.status !== "succeeded") {
       return Response.json({ error: "Enregistrement de la carte non confirmé." }, { status: 409 });
     }
-    if (session.metadata?.user_id !== auth.user.id) {
+    if (setupIntent.metadata?.user_id !== auth.user.id) {
       return Response.json({ error: "Opération non autorisée." }, { status: 403 });
     }
 
-    const setupIntent = session.setup_intent;
-    const paymentMethod = typeof setupIntent === "object" ? setupIntent.payment_method : null;
+    const paymentMethod = setupIntent.payment_method;
     if (!paymentMethod || typeof paymentMethod !== "object") {
       throw new Error("PAYMENT_METHOD_MISSING");
     }
@@ -33,7 +32,7 @@ export async function POST(request) {
     const { error } = await admin.from("payment_settings").upsert(
       {
         user_id: auth.user.id,
-        stripe_customer_id: typeof session.customer === "string" ? session.customer : session.customer?.id,
+        stripe_customer_id: typeof setupIntent.customer === "string" ? setupIntent.customer : setupIntent.customer?.id,
         stripe_payment_method_id: paymentMethod.id,
         card_brand: paymentMethod.card?.brand || paymentMethod.type,
         card_last4: paymentMethod.card?.last4 || null,
