@@ -82,11 +82,6 @@ export default function MesColisPage() {
         throw error;
       }
 
-      await supabase
-        .from("packages")
-        .update({ status: "reserved" })
-        .eq("id", pkg.id);
-
       alert("Demande envoyée au livreur.");
 
       await loadData();

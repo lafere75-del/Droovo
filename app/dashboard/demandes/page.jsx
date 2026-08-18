@@ -34,6 +34,7 @@ export default function DemandesPage() {
         trips (*)
       `)
       .eq("driver_id", user.id)
+      .neq("created_by", user.id)
       .order("created_at", { ascending: false });
 
     // DEMANDES RECUES EN TANT QU'EXPEDITEUR
@@ -45,6 +46,7 @@ export default function DemandesPage() {
         trips (*)
       `)
       .eq("sender_id", user.id)
+      .neq("created_by", user.id)
       .order("created_at", { ascending: false });
 
     setDriverRequests(driverData || []);
@@ -64,21 +66,6 @@ export default function DemandesPage() {
 
       if (error) {
         throw error;
-      }
-
-      // MAJ COLIS
-      if (status === "accepted") {
-        await supabase
-          .from("packages")
-          .update({ status: "accepted" })
-          .eq("id", booking.package_id);
-      }
-
-      if (status === "rejected") {
-        await supabase
-          .from("packages")
-          .update({ status: "active" })
-          .eq("id", booking.package_id);
       }
 
       alert(

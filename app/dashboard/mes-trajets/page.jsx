@@ -83,7 +83,7 @@ export default function MesTrajetsPage() {
         return;
       }
 
-      const { data: bookingData, error } = await supabase
+      const { error } = await supabase
         .from("bookings")
         .insert({
           package_id: pkg.id,
@@ -93,23 +93,10 @@ export default function MesTrajetsPage() {
           status: "pending",
           tracking_status: "booking_created",
         })
-        .select()
-        .single();
 
       if (error) {
         throw error;
       }
-
-      await supabase.from("tracking_events").insert({
-        booking_id: bookingData.id,
-        status: "booking_created",
-        message: "Demande de transport créée",
-      });
-
-      await supabase
-        .from("packages")
-        .update({ status: "reserved" })
-        .eq("id", pkg.id);
 
       alert("Demande envoyée à l’expéditeur.");
 
