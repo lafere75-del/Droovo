@@ -28,8 +28,8 @@ const parcels = [
     weight: "1 kg",
     droovoPrice: "7,20 €",
     postePrice: "9,59 €",
-    driverGain: "5,62 €",
-    commission: "1,58 €",
+    driverGain: "5,04 €",
+    commission: "1,80 €",
     delay: "24h",
   },
   {
@@ -39,8 +39,8 @@ const parcels = [
     weight: "3 kg",
     droovoPrice: "12,90 €",
     postePrice: "17,39 €",
-    driverGain: "10,06 €",
-    commission: "2,84 €",
+    driverGain: "9,23 €",
+    commission: "3,23 €",
     delay: "24h - 48h",
   },
   {
@@ -50,8 +50,8 @@ const parcels = [
     weight: "5 kg",
     droovoPrice: "12,90 €",
     postePrice: "17,39 €",
-    driverGain: "10,06 €",
-    commission: "2,84 €",
+    driverGain: "9,23 €",
+    commission: "3,23 €",
     delay: "24h",
   },
 ];
@@ -244,8 +244,8 @@ export default function DroovoApp() {
 
             <div className="mt-10 grid max-w-2xl grid-cols-3 gap-3">
               <MiniStat value="jusqu’à -30%" label="Économie client" />
-              <MiniStat value="22%" label="Commission app" />
-              <MiniStat value="5 à 12 €" label="Gain / colis" />
+              <MiniStat value="25%" label="Commission Droovo" />
+              <MiniStat value="Variable" label="Gain par colis" />
             </div>
           </div>
 
@@ -329,7 +329,7 @@ export default function DroovoApp() {
           ))}
         </div>
         <p className="mt-5 rounded-2xl bg-amber-50 px-5 py-4 text-sm font-bold text-amber-900 ring-1 ring-amber-200">
-          Paiement et codes sécurisés : activation prévue avec Stripe. Aucun paiement réel n’est demandé actuellement.
+          Paiement Stripe en phase de test. Aucun débit réel n’est effectué pendant la validation technique.
         </p>
       </section>
 
@@ -578,7 +578,7 @@ export default function DroovoApp() {
                 "Vérification d’identité",
                 "Choix du transporteur par le client",
                 "Double code de remise et de livraison (à venir)",
-                "Paiement Stripe avant mise en relation (à venir)",
+                "Paiement sécurisé par Stripe après choix du transporteur",
                 "Notation des utilisateurs",
               ].map((item) => (
                 <div
