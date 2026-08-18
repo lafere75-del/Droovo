@@ -67,6 +67,7 @@ export default function DroovoApp() {
   const [weight, setWeight] = useState(3);
   const [distance, setDistance] = useState(690);
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
   const [liveTrips, setLiveTrips] = useState([]);
   const [livePackages, setLivePackages] = useState([]);
 
@@ -80,6 +81,18 @@ export default function DroovoApp() {
     } = await supabase.auth.getUser();
 
     setCurrentUser(user);
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setCurrentUserRole(profile?.role || "user");
+    } else {
+      setCurrentUserRole(null);
+    }
 
     const { data: trips } = await supabase
       .from("trips")
@@ -137,6 +150,8 @@ export default function DroovoApp() {
     };
   }, [weight, distance]);
 
+  const accountHref = currentUserRole === "admin" ? "/admin" : "/dashboard";
+
   return (
     <main className="min-h-screen bg-[#F4F7F5] text-slate-950">
       <header className="sticky top-0 z-50 border-b border-emerald-100 bg-white/95 backdrop-blur-xl">
@@ -178,7 +193,7 @@ export default function DroovoApp() {
     <div className="flex items-center gap-3">
 
       <a
-        href="/dashboard"
+        href={accountHref}
         className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
       >
         Mon espace
@@ -332,7 +347,7 @@ export default function DroovoApp() {
           </div>
 
           <a
-            href={currentUser ? "/dashboard" : "/login"}
+            href={currentUser ? accountHref : "/login"}
             className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white"
           >
             {currentUser ? "Mon espace" : "Se connecter"}

@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
-const ADMIN_EMAILS = ["droovo@mosolar.fr"];
-
 export default function LoginPage() {
   const router = useRouter();
 
@@ -22,7 +20,7 @@ export default function LoginPage() {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
     });
@@ -34,7 +32,13 @@ export default function LoginPage() {
       return;
     }
 
-    if (ADMIN_EMAILS.includes(cleanEmail)) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+
+    if (profile?.role === "admin") {
       router.push("/admin");
     } else {
       router.push("/dashboard");
