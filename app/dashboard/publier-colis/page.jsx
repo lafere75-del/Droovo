@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { Camera, ImagePlus } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 export default function PublierColisPage() {
   const router = useRouter();
 
@@ -53,6 +56,18 @@ export default function PublierColisPage() {
 
     if (!file) return;
 
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      alert("Utilisez une image JPG, PNG ou WebP.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      alert("L’image doit faire moins de 5 Mo.");
+      e.target.value = "";
+      return;
+    }
+
     setImageFile(file);
 
     const previewUrl = URL.createObjectURL(file);
@@ -62,17 +77,16 @@ export default function PublierColisPage() {
   async function uploadImage(userId) {
     if (!imageFile) return null;
 
-    const fileExt = imageFile.name.split(".").pop();
+    const fileExt = imageFile.type === "image/png" ? "png" : imageFile.type === "image/webp" ? "webp" : "jpg";
 
-    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const fileName = `${userId}/${Date.now()}.${fileExt}`;
 
     const { error } = await supabase.storage
       .from("package-images")
-      .upload(fileName, imageFile);
+      .upload(fileName, imageFile, { contentType: imageFile.type });
 
     if (error) {
-      alert("Erreur upload image : " + error.message);
-      return null;
+      throw error;
     }
 
     const { data } = supabase.storage
@@ -96,7 +110,15 @@ export default function PublierColisPage() {
       return;
     }
 
-    const imageUrl = await uploadImage(user.id);
+    let imageUrl = null;
+
+    try {
+      imageUrl = await uploadImage(user.id);
+    } catch (error) {
+      alert("Erreur upload image : " + error.message);
+      setLoading(false);
+      return;
+    }
 
     const { error } = await supabase.from("packages").insert({
       user_id: user.id,
