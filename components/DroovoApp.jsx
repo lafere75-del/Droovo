@@ -595,22 +595,22 @@ export default function DroovoApp() {
           <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] md:items-center">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-300">
-                Prochaine étape
+                Application connectée
               </p>
               <h2 className="mt-2 text-4xl font-black tracking-tight">
-                Transformer cette maquette en vraie application connectée.
+                Droovo est maintenant reliée à ses services essentiels.
               </h2>
               <p className="mt-4 max-w-2xl text-white/60">
-                La prochaine version doit connecter les formulaires à Supabase,
-                créer les vrais colis, enregistrer les trajets, calculer les
-                prix et préparer Stripe.
+                Les comptes, les profils, les colis, les trajets et l’espace
+                administrateur utilisent Supabase. La dernière étape sera
+                l’intégration des paiements réels avec Stripe.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <FinalStat icon={Users} value="Users" label="Auth Supabase" />
-              <FinalStat icon={Package} value="Colis" label="Base de données" />
-              <FinalStat icon={CreditCard} value="Stripe" label="Paiements" />
-              <FinalStat icon={BadgeCheck} value="Admin" label="Suivi plateforme" />
+              <FinalStat icon={Users} value="Users" label="Connecté" />
+              <FinalStat icon={Package} value="Colis" label="Opérationnel" />
+              <FinalStat icon={CreditCard} value="Stripe" label="À finaliser" />
+              <FinalStat icon={BadgeCheck} value="Admin" label="Opérationnel" />
             </div>
           </div>
         </div>
