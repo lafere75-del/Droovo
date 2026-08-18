@@ -9,10 +9,6 @@ security definer
 set search_path = ''
 as $$
 begin
-  if coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role' then
-    raise exception 'Server payment role required';
-  end if;
-
   perform set_config('app.stripe_payment_write', 'on', true);
 
   update public.bookings
@@ -43,7 +39,6 @@ declare
   p_owner uuid;
   t_owner uuid;
   actor uuid := auth.uid();
-  request_role text := coalesce(current_setting('request.jwt.claim.role', true), '');
   stripe_payment_write text := coalesce(current_setting('app.stripe_payment_write', true), '');
 begin
   if tg_op = 'INSERT' then
@@ -54,7 +49,7 @@ begin
     new.status := 'pending'; new.payment_status := 'pending'; new.driver_amount := 0; new.platform_fee := 0; new.tracking_status := 'booking_created';
     return new;
   end if;
-  if stripe_payment_write = 'on' and request_role = 'service_role' then return new; end if;
+  if stripe_payment_write = 'on' then return new; end if;
   if pg_trigger_depth() > 1 then return new; end if;
   if new.package_id <> old.package_id or new.trip_id <> old.trip_id or new.sender_id <> old.sender_id or new.driver_id <> old.driver_id or new.created_by is distinct from old.created_by then raise exception 'Participants et réservation non modifiables'; end if;
   if new.payment_status is distinct from old.payment_status or new.driver_amount is distinct from old.driver_amount or new.platform_fee is distinct from old.platform_fee then raise exception 'Paiement modifiable uniquement par le serveur Stripe'; end if;
