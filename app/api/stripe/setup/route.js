@@ -1,6 +1,6 @@
 import { requireApiUser } from "../../../../lib/apiAuth";
 import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
-import { getAppUrl, getStripe, stripeError } from "../../../../lib/stripeServer";
+import { getStripe, stripeError } from "../../../../lib/stripeServer";
 
 export async function POST(request) {
   const auth = await requireApiUser(request);
@@ -32,17 +32,19 @@ export async function POST(request) {
       if (error) throw error;
     }
 
-    const appUrl = getAppUrl(request);
-    const session = await stripe.checkout.sessions.create({
-      mode: "setup",
+    const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    if (!publishableKey) throw new Error("STRIPE_PUBLISHABLE_KEY_MISSING");
+
+    const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
       metadata: { user_id: auth.user.id },
-      success_url: `${appUrl}/dashboard/paiements?setup=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/dashboard/paiements?setup=cancelled`,
-      integration_identifier: "droovo_setup_qmtrzvka",
+      usage: "off_session",
     });
 
-    return Response.json({ url: session.url });
+    return Response.json({
+      clientSecret: setupIntent.client_secret,
+      publishableKey,
+    });
   } catch (error) {
     return stripeError(error);
   }
