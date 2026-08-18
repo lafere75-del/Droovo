@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
+import EmbeddedCardSetup from "../../../components/EmbeddedCardSetup";
+import EmbeddedConnectOnboarding from "../../../components/EmbeddedConnectOnboarding";
 
 export default function PaiementsPage() {
   const [senderBookings, setSenderBookings] = useState([]);
   const [driverBookings, setDriverBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stripeLoading, setStripeLoading] = useState(false);
+  const [cardSetup, setCardSetup] = useState(null);
+  const [connectSetup, setConnectSetup] = useState(null);
 
   const [cardNumber, setCardNumber] = useState("");
   const [cardSaved, setCardSaved] = useState(false);
@@ -115,10 +119,11 @@ export default function PaiementsPage() {
   async function startCardSetup() {
     setStripeLoading(true);
     try {
-      const { url } = await callStripe("/api/stripe/setup");
-      window.location.assign(url);
+      const setup = await callStripe("/api/stripe/setup");
+      setCardSetup(setup);
     } catch (error) {
       alert(error.message);
+    } finally {
       setStripeLoading(false);
     }
   }
@@ -126,12 +131,32 @@ export default function PaiementsPage() {
   async function startConnectOnboarding() {
     setStripeLoading(true);
     try {
-      const { url } = await callStripe("/api/stripe/connect/onboarding");
-      window.location.assign(url);
+      const setup = await callStripe("/api/stripe/connect/onboarding");
+      setConnectSetup(setup);
     } catch (error) {
       alert(error.message);
+    } finally {
       setStripeLoading(false);
     }
+  }
+
+  const fetchConnectClientSecret = useCallback(async () => {
+    const setup = await callStripe("/api/stripe/connect/onboarding");
+    return setup.clientSecret;
+  }, []);
+
+  async function syncCardSetup(setupIntentId) {
+    await callStripe("/api/stripe/setup/sync", { setupIntentId });
+  }
+
+  async function finishCardSetup() {
+    setCardSetup(null);
+    await loadPayments();
+  }
+
+  async function finishConnectSetup() {
+    setConnectSetup(null);
+    await loadPayments();
   }
 
   if (loading) {
@@ -175,8 +200,8 @@ export default function PaiementsPage() {
             </h2>
 
             <p className="mt-2 text-slate-600">
-              Le paiement sera saisi directement dans l’interface sécurisée de
-              Stripe. Droovo ne demandera jamais votre numéro de carte ici.
+              Saisissez votre carte sans quitter Droovo. Le formulaire sécurisé
+              est géré par Stripe et Droovo ne voit jamais le numéro complet.
             </p>
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
@@ -210,17 +235,27 @@ export default function PaiementsPage() {
               uniquement après validation de la livraison. Les données bancaires
               restent chez Stripe.
             </p>
-            <button
-              onClick={startCardSetup}
-              disabled={stripeLoading}
-              className="mt-6 rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60"
-            >
-              {stripeLoading
-                ? "Ouverture de Stripe…"
-                : cardSaved
-                  ? "Modifier ma carte"
-                  : "Enregistrer ma carte et autoriser les paiements"}
-            </button>
+            {cardSetup ? (
+              <EmbeddedCardSetup
+                clientSecret={cardSetup.clientSecret}
+                publishableKey={cardSetup.publishableKey}
+                syncSetup={syncCardSetup}
+                onSaved={finishCardSetup}
+                onCancel={() => setCardSetup(null)}
+              />
+            ) : (
+              <button
+                onClick={startCardSetup}
+                disabled={stripeLoading}
+                className="mt-6 rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {stripeLoading
+                  ? "Chargement…"
+                  : cardSaved
+                    ? "Modifier ma carte"
+                    : "Enregistrer ma carte et autoriser les paiements"}
+              </button>
+            )}
           </div>
 
           <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
@@ -229,8 +264,8 @@ export default function PaiementsPage() {
             </h2>
 
             <p className="mt-2 text-slate-600">
-              Stripe Connect vérifiera le transporteur et recueillera ses
-              coordonnées bancaires dans son interface sécurisée.
+              Renseignez votre identité et votre RIB sans quitter Droovo. Les
+              champs bancaires sécurisés sont gérés par Stripe Connect.
             </p>
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
@@ -244,13 +279,22 @@ export default function PaiementsPage() {
                 ne stocke pas vos coordonnées bancaires complètes.
               </p>
             </div>
-            <button
-              onClick={startConnectOnboarding}
-              disabled={stripeLoading}
-              className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
-            >
-              {stripeLoading ? "Ouverture de Stripe…" : "Configurer mes versements"}
-            </button>
+            {connectSetup ? (
+              <EmbeddedConnectOnboarding
+                initialClientSecret={connectSetup.clientSecret}
+                publishableKey={connectSetup.publishableKey}
+                fetchClientSecret={fetchConnectClientSecret}
+                onExit={finishConnectSetup}
+              />
+            ) : (
+              <button
+                onClick={startConnectOnboarding}
+                disabled={stripeLoading}
+                className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
+              >
+                {stripeLoading ? "Chargement…" : "Configurer mes versements"}
+              </button>
+            )}
           </div>
         </section>
 

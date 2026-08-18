@@ -1,6 +1,6 @@
 import { requireApiUser } from "../../../../../lib/apiAuth";
 import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
-import { getAppUrl, getStripe, stripeError } from "../../../../../lib/stripeServer";
+import { getStripe, stripeError } from "../../../../../lib/stripeServer";
 
 export async function POST(request) {
   const auth = await requireApiUser(request);
@@ -50,20 +50,25 @@ export async function POST(request) {
       if (error) throw error;
     }
 
-    const appUrl = getAppUrl(request);
-    const accountLink = await stripe.v2.core.accountLinks.create({
+    const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    if (!publishableKey) throw new Error("STRIPE_PUBLISHABLE_KEY_MISSING");
+
+    const accountSession = await stripe.accountSessions.create({
       account: accountId,
-      use_case: {
-        type: "account_onboarding",
+      components: {
         account_onboarding: {
-          configurations: ["recipient"],
-          refresh_url: `${appUrl}/dashboard/paiements?connect=refresh`,
-          return_url: `${appUrl}/dashboard/paiements?connect=returned`,
+          enabled: true,
+          features: {
+            external_account_collection: true,
+          },
         },
       },
     });
 
-    return Response.json({ url: accountLink.url });
+    return Response.json({
+      clientSecret: accountSession.client_secret,
+      publishableKey,
+    });
   } catch (error) {
     return stripeError(error);
   }
