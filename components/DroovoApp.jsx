@@ -595,22 +595,42 @@ export default function DroovoApp() {
           <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] md:items-center">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-300">
-                Application connectée
+                Passez à l’action
               </p>
               <h2 className="mt-2 text-4xl font-black tracking-tight">
-                Droovo est maintenant reliée à ses services essentiels.
+                Un trajet prévu ou un colis à envoyer ?
               </h2>
               <p className="mt-4 max-w-2xl text-white/60">
-                Les comptes, les profils, les colis, les trajets et l’espace
-                administrateur utilisent Supabase. La dernière étape sera
-                l’intégration des paiements réels avec Stripe.
+                Publiez votre besoin en quelques minutes. Droovo vous aide à
+                trouver une personne effectuant le même trajet et à suivre la
+                livraison depuis votre espace.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <FinalStat icon={Users} value="Users" label="Connecté" />
-              <FinalStat icon={Package} value="Colis" label="Opérationnel" />
-              <FinalStat icon={CreditCard} value="Stripe" label="À finaliser" />
-              <FinalStat icon={BadgeCheck} value="Admin" label="Opérationnel" />
+              <FinalStat
+                href={currentUser ? "/dashboard/publier-colis" : "/signup"}
+                icon={Package}
+                value="Envoyer un colis"
+                label="Publier une demande"
+              />
+              <FinalStat
+                href={currentUser ? "/dashboard/declarer-trajet" : "/signup"}
+                icon={Car}
+                value="Proposer un trajet"
+                label="Transporter et gagner"
+              />
+              <FinalStat
+                href={currentUser ? "/dashboard/suivis" : "/login"}
+                icon={Route}
+                value="Suivre une livraison"
+                label="Consulter son avancement"
+              />
+              <FinalStat
+                href={currentUser ? accountHref : "/login"}
+                icon={Users}
+                value="Mon espace"
+                label="Gérer toute son activité"
+              />
             </div>
           </div>
         </div>
@@ -797,12 +817,15 @@ function PriceBox({ label, value, icon: Icon, highlight }) {
   );
 }
 
-function FinalStat({ icon: Icon, value, label }) {
+function FinalStat({ href, icon: Icon, value, label }) {
   return (
-    <div className="rounded-3xl bg-white/10 p-5 ring-1 ring-white/10">
+    <a
+      href={href}
+      className="rounded-3xl bg-white/10 p-5 ring-1 ring-white/10 transition hover:bg-white/15"
+    >
       <Icon className="text-emerald-300" size={22} />
       <p className="mt-4 text-lg font-black">{value}</p>
       <p className="mt-1 text-xs text-white/45">{label}</p>
-    </div>
+    </a>
   );
 }
