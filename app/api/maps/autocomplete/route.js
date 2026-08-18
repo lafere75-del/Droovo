@@ -5,6 +5,15 @@ export async function GET(request) {
   const query = new URL(request.url).searchParams.get("q")?.trim();
   if (!query || query.length < 3) return Response.json({ suggestions: [] });
 
+  if (!process.env.GOOGLE_MAPS_SERVER_API_KEY) {
+    return Response.json({
+      suggestions: [{
+        placeId: `test:${encodeURIComponent(query)}`,
+        label: `${query} — distance test 100 km`,
+      }],
+    });
+  }
+
   try {
     const response = await googleMapsFetch("v1/places:autocomplete", {
       method: "POST",
