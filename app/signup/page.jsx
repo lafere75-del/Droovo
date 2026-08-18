@@ -42,9 +42,9 @@ export default function SignupPage() {
 
       if (data.session) {
         await supabase.from("profiles").update({ fullname: fullname.trim() }).eq("id", userId);
-        router.push("/dashboard");
+        router.push("/dashboard/paiements?setup=required");
       } else {
-        alert("Compte créé. Consultez votre e-mail pour confirmer l’inscription.");
+        alert("Compte créé. Confirmez votre e-mail, puis enregistrez votre carte dans l’espace sécurisé Stripe.");
         router.push("/login");
       }
     } finally {
@@ -64,7 +64,8 @@ export default function SignupPage() {
         </h1>
 
         <p className="mt-3 text-slate-600">
-          Créez votre compte Droovo. La vérification d’identité sera demandée ensuite.
+          Créez votre compte Droovo. Après validation de l’e-mail, Stripe vous
+          demandera d’enregistrer un moyen de paiement sécurisé.
         </p>
 
         <form onSubmit={handleSignup} className="mt-8 grid gap-4">

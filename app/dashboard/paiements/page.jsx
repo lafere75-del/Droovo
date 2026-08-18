@@ -10,17 +10,8 @@ export default function PaiementsPage() {
   const [loading, setLoading] = useState(true);
   const [stripeLoading, setStripeLoading] = useState(false);
 
-  const [showCardForm, setShowCardForm] = useState(false);
-  const [showRibForm, setShowRibForm] = useState(false);
-
-  const [cardName, setCardName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
   const [cardSaved, setCardSaved] = useState(false);
-
-  const [iban, setIban] = useState("");
-  const [ribName, setRibName] = useState("");
-  const [ribSaved, setRibSaved] = useState(false);
 
   const [paymentSettings, setPaymentSettings] = useState(null);
 
@@ -32,10 +23,16 @@ export default function PaiementsPage() {
     async function syncStripeReturn() {
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get("session_id");
-      if (params.get("payment") !== "success" || !sessionId) return;
+      if (!sessionId) return;
 
       try {
-        await callStripe("/api/stripe/sync", { sessionId });
+        if (params.get("setup") === "success") {
+          await callStripe("/api/stripe/setup/sync", { sessionId });
+        } else if (params.get("payment") === "success") {
+          await callStripe("/api/stripe/sync", { sessionId });
+        } else {
+          return;
+        }
         await loadPayments();
         window.history.replaceState({}, "", "/dashboard/paiements");
       } catch (error) {
@@ -72,14 +69,6 @@ export default function PaiementsPage() {
         setCardNumber(`****${paymentData.card_last4}`);
       }
 
-      if (paymentData.iban_last4) {
-        setRibSaved(true);
-        setIban(`****${paymentData.iban_last4}`);
-      }
-
-      if (paymentData.iban_holder) {
-        setRibName(paymentData.iban_holder);
-      }
     }
 
     const { data: senderData } = await supabase
@@ -107,77 +96,6 @@ export default function PaiementsPage() {
     setLoading(false);
   }
 
-  async function saveCard() {
-    if (!cardName.trim() || !cardNumber.trim() || !cardExpiry.trim()) {
-      alert("Complète les informations de la carte.");
-      return;
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      alert("Utilisateur non connecté.");
-      return;
-    }
-
-    const last4 = cardNumber.slice(-4);
-
-    const { error } = await supabase
-      .from("payment_settings")
-      .upsert({
-        user_id: user.id,
-        card_last4: last4,
-      });
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    setCardSaved(true);
-    setShowCardForm(false);
-
-    await loadPayments();
-  }
-
-  async function saveRib() {
-    if (!ribName.trim() || !iban.trim()) {
-      alert("Complète le titulaire et l’IBAN.");
-      return;
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      alert("Utilisateur non connecté.");
-      return;
-    }
-
-    const ibanLast4 = iban.slice(-4);
-
-    const { error } = await supabase
-      .from("payment_settings")
-      .upsert({
-        user_id: user.id,
-        iban_last4: ibanLast4,
-        iban_holder: ribName,
-      });
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    setRibSaved(true);
-    setShowRibForm(false);
-
-    await loadPayments();
-  }
-
   async function callStripe(path, body = {}) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error("Vous devez être connecté.");
@@ -194,10 +112,10 @@ export default function PaiementsPage() {
     return result;
   }
 
-  async function startPayment(bookingId) {
+  async function startCardSetup() {
     setStripeLoading(true);
     try {
-      const { url } = await callStripe("/api/stripe/checkout", { bookingId });
+      const { url } = await callStripe("/api/stripe/setup");
       window.location.assign(url);
     } catch (error) {
       alert(error.message);
@@ -286,52 +204,23 @@ export default function PaiementsPage() {
               )}
             </div>
 
-            {showCardForm && (
-              <div className="mt-5 space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
-                <input
-                  value={cardName}
-                  onChange={(e) => setCardName(e.target.value)}
-                  placeholder="Nom sur la carte"
-                  className="w-full rounded-xl border border-emerald-100 px-4 py-3 text-sm outline-none"
-                />
-
-                <input
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  placeholder="Numéro de carte"
-                  className="w-full rounded-xl border border-emerald-100 px-4 py-3 text-sm outline-none"
-                />
-
-                <input
-                  value={cardExpiry}
-                  onChange={(e) => setCardExpiry(e.target.value)}
-                  placeholder="Expiration MM/AA"
-                  className="w-full rounded-xl border border-emerald-100 px-4 py-3 text-sm outline-none"
-                />
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={saveCard}
-                    className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700"
-                  >
-                    Enregistrer la carte
-                  </button>
-
-                  <button
-                    onClick={() => setShowCardForm(false)}
-                    className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-700"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!showCardForm && (
-              <p className="mt-6 text-sm font-bold text-emerald-700">
-                La carte sera demandée uniquement au moment de payer une livraison.
-              </p>
-            )}
+            <p className="mt-5 text-sm leading-6 text-slate-600">
+              En enregistrant une carte, vous autorisez Droovo à préautoriser le
+              prix lorsque vous choisissez un transporteur, puis à le débiter
+              uniquement après validation de la livraison. Les données bancaires
+              restent chez Stripe.
+            </p>
+            <button
+              onClick={startCardSetup}
+              disabled={stripeLoading}
+              className="mt-6 rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {stripeLoading
+                ? "Ouverture de Stripe…"
+                : cardSaved
+                  ? "Modifier ma carte"
+                  : "Enregistrer ma carte et autoriser les paiements"}
+            </button>
           </div>
 
           <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
@@ -345,70 +234,23 @@ export default function PaiementsPage() {
             </p>
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-              {ribSaved ? (
-                <>
-                  <p className="font-black text-slate-900">RIB enregistré</p>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    IBAN terminant par {iban.slice(-4)}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="font-black text-slate-900">
-                    Aucun RIB enregistré
-                  </p>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    Les versements seront ensuite sécurisés avec Stripe Connect.
-                  </p>
-                </>
-              )}
+              <p className="font-black text-slate-900">
+                {paymentSettings?.stripe_connect_account_id
+                  ? "Compte transporteur créé"
+                  : "Versements non configurés"}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Stripe recueille directement votre identité et votre IBAN. Droovo
+                ne stocke pas vos coordonnées bancaires complètes.
+              </p>
             </div>
-
-            {showRibForm && (
-              <div className="mt-5 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <input
-                  value={ribName}
-                  onChange={(e) => setRibName(e.target.value)}
-                  placeholder="Titulaire du compte"
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-                />
-
-                <input
-                  value={iban}
-                  onChange={(e) => setIban(e.target.value)}
-                  placeholder="IBAN"
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none"
-                />
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={saveRib}
-                    className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-slate-800"
-                  >
-                    Enregistrer le RIB
-                  </button>
-
-                  <button
-                    onClick={() => setShowRibForm(false)}
-                    className="rounded-full bg-white px-5 py-3 text-sm font-black text-slate-700"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!showRibForm && (
-              <button
-                onClick={startConnectOnboarding}
-                disabled={stripeLoading}
-                className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
-              >
-                {stripeLoading ? "Ouverture de Stripe…" : "Configurer mes versements"}
-              </button>
-            )}
+            <button
+              onClick={startConnectOnboarding}
+              disabled={stripeLoading}
+              className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
+            >
+              {stripeLoading ? "Ouverture de Stripe…" : "Configurer mes versements"}
+            </button>
           </div>
         </section>
 
@@ -427,8 +269,6 @@ export default function PaiementsPage() {
                 key={booking.id}
                 booking={booking}
                 mode="sender"
-                onPay={() => startPayment(booking.id)}
-                actionLoading={stripeLoading}
               />
             ))}
           </div>
@@ -458,7 +298,7 @@ export default function PaiementsPage() {
   );
 }
 
-function PaymentCard({ booking, mode, onPay, actionLoading = false }) {
+function PaymentCard({ booking, mode }) {
   const price = Number(booking.packages?.price || 0);
   const platformFee = Number(booking.platform_fee || price * 0.25).toFixed(2);
   const driverAmount = Number(
@@ -492,7 +332,7 @@ function PaymentCard({ booking, mode, onPay, actionLoading = false }) {
         </div>
 
         <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-700">
-          {booking.payment_status || "pending"}
+          {paymentStatusLabel(booking.payment_status)}
         </span>
       </div>
 
@@ -504,18 +344,14 @@ function PaymentCard({ booking, mode, onPay, actionLoading = false }) {
           Suivre la livraison
         </Link>
 
-        {mode === "sender" &&
-          booking.status === "accepted" &&
-          booking.payment_status !== "paid" && (
-            <button
-              onClick={onPay}
-              disabled={actionLoading}
-              className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
-            >
-              {actionLoading ? "Ouverture du paiement…" : `Payer ${price.toFixed(2)} € avec Stripe`}
-            </button>
-          )}
       </div>
+
+      {mode === "sender" && booking.payment_status === "authorized" && (
+        <p className="mt-6 rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
+          Montant préautorisé. Votre carte sera débitée uniquement lorsque vous
+          confirmerez la livraison.
+        </p>
+      )}
 
       {mode === "driver" && (
         <p className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-600">
@@ -525,6 +361,14 @@ function PaymentCard({ booking, mode, onPay, actionLoading = false }) {
       )}
     </div>
   );
+}
+
+function paymentStatusLabel(status) {
+  return {
+    pending: "En attente",
+    authorized: "Préautorisé",
+    paid: "Payé",
+  }[status] || status || "En attente";
 }
 
 function EmptyCard({ text }) {

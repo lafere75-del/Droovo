@@ -16,7 +16,9 @@ export async function POST(request) {
       .maybeSingle();
     if (!booking) return Response.json({ error: "Livraison introuvable." }, { status: 404 });
     if (booking.tracking_status !== "delivered") return Response.json({ error: "Le transporteur doit d’abord déclarer le colis livré." }, { status: 409 });
-    if (booking.payment_status !== "paid") return Response.json({ error: "Le paiement n’est pas confirmé." }, { status: 409 });
+    if (!["authorized", "paid"].includes(booking.payment_status)) {
+      return Response.json({ error: "Aucune préautorisation valide n’est disponible." }, { status: 409 });
+    }
 
     const admin = getSupabaseAdmin();
     const { data: payment } = await admin.from("payments").select("*").eq("booking_id", booking.id).maybeSingle();
@@ -37,6 +39,38 @@ export async function POST(request) {
     const recipient = account.configuration?.recipient;
     if (recipient?.capabilities?.stripe_balance?.stripe_transfers?.status !== "active") {
       return Response.json({ error: "Le compte de versement du transporteur n’est pas encore actif." }, { status: 409 });
+    }
+
+    if (payment.payment_status === "authorized") {
+      if (!payment.stripe_payment_id) throw new Error("PAYMENT_INTENT_MISSING");
+      await stripe.paymentIntents.capture(
+        payment.stripe_payment_id,
+        {},
+        { idempotencyKey: `capture-delivery-${booking.id}` }
+      );
+      const capturedIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_id, {
+        expand: ["latest_charge.balance_transaction"],
+      });
+      const charge = capturedIntent.latest_charge;
+      const balanceTransaction = typeof charge === "object" && charge
+        ? charge.balance_transaction
+        : null;
+      const processingFeeCents = typeof balanceTransaction === "object" && balanceTransaction
+        ? Number(balanceTransaction.fee || 0)
+        : 0;
+
+      const { error: paidError } = await admin.from("payments").update({
+        payment_status: "paid",
+        stripe_charge_id: typeof charge === "object" && charge ? charge.id : null,
+        stripe_balance_transaction_id: typeof balanceTransaction === "object" && balanceTransaction
+          ? balanceTransaction.id
+          : null,
+        processing_fee_cents: processingFeeCents,
+        paid_at: new Date().toISOString(),
+      }).eq("booking_id", booking.id);
+      if (paidError) throw paidError;
+      payment.payment_status = "paid";
+      payment.processing_fee_cents = processingFeeCents;
     }
 
     const amountCents = Number(payment.amount_cents);
@@ -60,12 +94,12 @@ export async function POST(request) {
       stripe_transfer_id: transfer.id,
       released_at: new Date().toISOString(),
     }).eq("booking_id", booking.id);
-    await admin.from("bookings").update({
-      status: "completed",
-      tracking_status: "payout",
-      driver_amount: transferCents / 100,
-      platform_fee: commissionCents / 100,
-    }).eq("id", booking.id);
+    const { error: bookingError } = await admin.rpc("stripe_complete_booking", {
+      p_booking_id: booking.id,
+      p_platform_fee: commissionCents / 100,
+      p_driver_amount: transferCents / 100,
+    });
+    if (bookingError) throw bookingError;
 
     return Response.json({ status: "released", amount: transferCents / 100 });
   } catch (error) {

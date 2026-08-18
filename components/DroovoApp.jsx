@@ -59,9 +59,9 @@ const parcels = [
 const comparison = [
   ["Prix 1 kg TTC", "7,20 €", "9,59 €", "Dès 12,52 €*"],
   ["Prix 5 kg TTC", "12,90 €", "17,39 €", "Dès 15,94 €*"],
-  ["Délai indicatif", "Jour même possible", "Quelques jours", "Le lendemain"],
-  ["Remise", "Directe au destinataire", "À domicile", "À domicile"],
-  ["Fonctionnement", "Trajet déjà prévu", "Réseau logistique", "Transport dédié"],
+  ["Économie client", "Environ -25%", "Tarif standard", "Souvent plus cher"],
+  ["Gain livreur", "5 à 12 € / colis", "Non", "Non"],
+  ["Impact", "Trajet déjà prévu", "Réseau logistique", "Transport dédié"],
 ];
 
 const deliverySteps = [
@@ -517,7 +517,7 @@ export default function DroovoApp() {
             <span>Critère</span>
             <span className="text-emerald-300">Droovo</span>
             <span>La Poste</span>
-            <span>Express domicile</span>
+            <span>Express</span>
           </div>
           {comparison.map((row) => (
             <div

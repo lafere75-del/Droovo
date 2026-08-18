@@ -63,7 +63,6 @@ export default function SuiviPage({ params }) {
 
     if (status === "delivered") {
       updatePayload.delivered_at = new Date().toISOString();
-      updatePayload.status = "delivered";
     }
 
     const { error } = await supabase
@@ -132,13 +131,16 @@ export default function SuiviPage({ params }) {
   const currentStatus = booking.tracking_status || "booking_created";
   const timeline = [
     ["booking_created", "Transporteur choisi"],
-    ["paid", "Paiement sécurisé"],
+    ["authorized", "Montant préautorisé"],
     ["picked_up", "Colis remis"],
     ["in_transit", "En transport"],
     ["delivered", "Livré"],
     ["payout", "Transporteur payé"],
   ];
-  const currentIndex = Math.max(0, timeline.findIndex(([status]) => status === currentStatus));
+  const trackingIndex = timeline.findIndex(([status]) => status === currentStatus);
+  const currentIndex = currentStatus === "booking_created" && booking.payment_status === "authorized"
+    ? 1
+    : Math.max(0, trackingIndex);
 
   return (
     <main className="min-h-screen bg-[#F4F7F5] px-6 py-10">
@@ -176,12 +178,12 @@ export default function SuiviPage({ params }) {
           <div className="mt-8 grid gap-3 md:grid-cols-3">
             {timeline.map(([status, label], index) => {
               const completed = index <= currentIndex;
-              const unavailable = status === "paid" || status === "payout";
+              const unavailable = status === "payout";
               return (
                 <div key={status} className={`rounded-2xl p-4 ring-1 ${completed ? "bg-emerald-50 text-emerald-900 ring-emerald-200" : "bg-slate-50 text-slate-500 ring-slate-200"}`}>
                   <p className="text-xs font-black uppercase tracking-wide">Étape {index + 1}</p>
                   <p className="mt-1 font-black">{label}</p>
-                  {unavailable && <p className="mt-1 text-xs font-bold">À l’activation de Stripe</p>}
+                  {unavailable && <p className="mt-1 text-xs font-bold">Après confirmation de la réception</p>}
                 </div>
               );
             })}
@@ -190,8 +192,9 @@ export default function SuiviPage({ params }) {
           <div className="mt-6 rounded-2xl bg-amber-50 p-5 text-sm text-amber-950 ring-1 ring-amber-200">
             <p className="font-black">Preuve de remise et de livraison</p>
             <p className="mt-1 leading-6">
-              Les deux codes sécurisés seront activés avec le paiement Stripe.
-              Pour le moment, les boutons de suivi servent uniquement aux tests et ne déclenchent aucun versement.
+              Le transporteur déclare la remise et la livraison. L’expéditeur
+              confirme ensuite la réception : Stripe débite alors la carte et
+              Droovo débloque le gain du transporteur.
             </p>
           </div>
 
@@ -253,7 +256,7 @@ export default function SuiviPage({ params }) {
 
             <div className="mt-5 flex flex-wrap gap-3">
               <button
-                disabled={actionLoading || !["booking_created", "paid"].includes(currentStatus)}
+                disabled={actionLoading || currentStatus !== "booking_created" || booking.payment_status !== "authorized"}
                 onClick={() =>
                   updateTracking("picked_up", "Le colis a été récupéré.")
                 }
@@ -288,11 +291,12 @@ export default function SuiviPage({ params }) {
           </div>
           )}
 
-          {userId === booking.sender_id && currentStatus === "delivered" && booking.payment_status === "paid" && (
+          {userId === booking.sender_id && currentStatus === "delivered" && booking.payment_status === "authorized" && (
             <div className="mt-8 rounded-2xl bg-emerald-50 p-5 ring-1 ring-emerald-100">
               <h2 className="text-xl font-black text-slate-950">Confirmer la réception</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Confirmez seulement lorsque le colis a bien été remis. Cette action débloque le gain du transporteur.
+                Confirmez seulement lorsque le colis a bien été remis. Cette
+                action débite votre carte et débloque le gain du transporteur.
               </p>
               <button
                 onClick={confirmDeliveryAndRelease}
