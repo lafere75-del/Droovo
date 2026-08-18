@@ -59,18 +59,31 @@ export default function DemandesPage() {
     setActionLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("bookings")
-        .update({ status })
-        .eq("id", booking.id);
-
-      if (error) {
-        throw error;
+      if (status === "accepted") {
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch("/api/stripe/authorize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token || ""}`,
+          },
+          body: JSON.stringify({ bookingId: booking.id }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || "Préautorisation impossible.");
+        }
+      } else {
+        const { error } = await supabase
+          .from("bookings")
+          .update({ status })
+          .eq("id", booking.id);
+        if (error) throw error;
       }
 
       alert(
         status === "accepted"
-          ? "Demande acceptée. L’expéditeur pourra ensuite confirmer son choix et payer dès l’activation de Stripe."
+          ? "Demande acceptée. Le montant est préautorisé sur la carte de l’expéditeur et ne sera débité qu’après validation de la livraison."
           : "Demande refusée."
       );
 
@@ -154,8 +167,8 @@ export default function DemandesPage() {
             </h2>
 
           <p className="mt-1 text-slate-600">
-              Comparez les propositions avant de choisir. Aucun paiement réel
-              n’est demandé tant que Stripe n’est pas activé.
+              Comparez les propositions avant de choisir. Le montant est réservé
+              sur votre carte au choix du transporteur, puis débité après livraison.
           </p>
           </div>
 
