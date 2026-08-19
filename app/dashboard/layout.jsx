@@ -35,19 +35,6 @@ export default function DashboardLayout({ children }) {
         return;
       }
 
-      if (!["/dashboard/paiements", "/dashboard/verification"].includes(pathname)) {
-        const { data: paymentSettings } = await supabase
-          .from("payment_settings")
-          .select("stripe_payment_method_id,card_consent_at")
-          .eq("user_id", data.user.id)
-          .maybeSingle();
-
-        if (!paymentSettings?.stripe_payment_method_id || !paymentSettings?.card_consent_at) {
-          router.replace("/dashboard/paiements?setup=required");
-          return;
-        }
-      }
-
       setAuthorized(true);
     }
 
