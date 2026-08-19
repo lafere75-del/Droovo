@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Bell, CarFront, ChevronRight, Package, Route, ShieldAlert } from "lucide-react";
+import { Bell, CarFront, ChevronRight, CreditCard, Package, Route, ShieldAlert } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { formatDeliveryStatus } from "../../lib/droovoUi";
 
@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [packages, setPackages] = useState([]);
   const [trips, setTrips] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [paymentReady, setPaymentReady] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,11 +33,12 @@ export default function DashboardPage() {
         return;
       }
 
-      const [profileResult, packagesResult, tripsResult, notificationsResult] = await Promise.all([
+      const [profileResult, packagesResult, tripsResult, notificationsResult, paymentResult] = await Promise.all([
         supabase.from("profiles").select("first_name,identity_status").eq("id", user.id).maybeSingle(),
         supabase.from("packages").select("id,title,departure_city,arrival_city,status,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(4),
         supabase.from("trips").select("id,departure_city,arrival_city,status,trip_date,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(4),
         supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("is_read", false),
+        supabase.from("payment_settings").select("stripe_payment_method_id,card_consent_at").eq("user_id", user.id).maybeSingle(),
       ]);
 
       if (!active) return;
@@ -45,6 +47,7 @@ export default function DashboardPage() {
       setPackages(packagesResult.data || []);
       setTrips(tripsResult.data || []);
       setUnreadCount(notificationsResult.count || 0);
+      setPaymentReady(Boolean(paymentResult.data?.stripe_payment_method_id && paymentResult.data?.card_consent_at));
       setLoading(false);
     }
 
@@ -94,6 +97,17 @@ export default function DashboardPage() {
               <h2 className="font-black">Vérification d’identité requise</h2>
               <p className="mt-1 text-sm text-slate-600">Vérifiez votre identité avant votre première opération.</p>
               <Link href="/dashboard/verification" className="mt-3 inline-flex rounded-full bg-amber-600 px-4 py-2 text-sm font-black text-white">Vérifier mon identité</Link>
+            </div>
+          </section>
+        ) : null}
+
+        {!paymentReady ? (
+          <section className="mt-5 flex gap-4 rounded-2xl bg-white p-5 ring-1 ring-emerald-100">
+            <CreditCard className="mt-0.5 shrink-0 text-emerald-700" size={22} />
+            <div>
+              <h2 className="font-black">Moyen de paiement à ajouter</h2>
+              <p className="mt-1 text-sm text-slate-600">Vous pouvez découvrir votre espace maintenant et enregistrer votre carte avant de choisir un transporteur.</p>
+              <Link href="/dashboard/paiements" className="mt-3 inline-flex rounded-full bg-emerald-600 px-4 py-2 text-sm font-black text-white">Ajouter ma carte</Link>
             </div>
           </section>
         ) : null}
