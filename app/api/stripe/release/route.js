@@ -1,6 +1,7 @@
 import { requireApiUser } from "../../../../lib/apiAuth";
 import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getStripe, stripeError } from "../../../../lib/stripeServer";
+import { getStripeIdentityName, legalNamesMatch } from "../../../../lib/identityName";
 
 export async function POST(request) {
   const auth = await requireApiUser(request);
@@ -36,18 +37,39 @@ export async function POST(request) {
     const account = await stripe.v2.core.accounts.retrieve(settings.stripe_connect_account_id, {
       include: ["configuration.recipient"],
     });
+    const { data: driverProfile } = await admin.from("profiles")
+      .select("fullname,identity_status")
+      .eq("id", booking.driver_id)
+      .maybeSingle();
+    if (
+      driverProfile?.identity_status !== "verified" ||
+      !legalNamesMatch(getStripeIdentityName(account), driverProfile?.fullname)
+    ) {
+      return Response.json(
+        { error: "Le titulaire du compte de versement ne correspond pas à l’identité vérifiée." },
+        { status: 409 }
+      );
+    }
     const recipient = account.configuration?.recipient;
     if (recipient?.capabilities?.stripe_balance?.stripe_transfers?.status !== "active") {
       return Response.json({ error: "Le compte de versement du transporteur n’est pas encore actif." }, { status: 409 });
     }
 
-    if (payment.payment_status === "authorized") {
+    if (["authorized", "paid"].includes(payment.payment_status)) {
       if (!payment.stripe_payment_id) throw new Error("PAYMENT_INTENT_MISSING");
-      await stripe.paymentIntents.capture(
-        payment.stripe_payment_id,
-        {},
-        { idempotencyKey: `capture-delivery-${booking.id}` }
-      );
+      const currentIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_id);
+      if (currentIntent.status === "requires_capture") {
+        await stripe.paymentIntents.capture(
+          payment.stripe_payment_id,
+          {},
+          { idempotencyKey: `capture-delivery-${booking.id}` }
+        );
+      } else if (currentIntent.status !== "succeeded") {
+        return Response.json(
+          { error: "La préautorisation bancaire n’est plus valide." },
+          { status: 409 }
+        );
+      }
       const capturedIntent = await stripe.paymentIntents.retrieve(payment.stripe_payment_id, {
         expand: ["latest_charge.balance_transaction"],
       });

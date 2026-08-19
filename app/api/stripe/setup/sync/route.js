@@ -1,6 +1,7 @@
 import { requireApiUser } from "../../../../../lib/apiAuth";
 import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
 import { getStripe, stripeError } from "../../../../../lib/stripeServer";
+import { legalNamesMatch } from "../../../../../lib/identityName";
 
 export async function POST(request) {
   const auth = await requireApiUser(request);
@@ -29,6 +30,20 @@ export async function POST(request) {
     }
 
     const admin = getSupabaseAdmin();
+    const { data: profile } = await auth.client
+      .from("profiles")
+      .select("fullname,identity_status")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+    if (
+      !legalNamesMatch(paymentMethod.billing_details?.name, profile?.fullname)
+    ) {
+      await getStripe().paymentMethods.detach(paymentMethod.id).catch(() => {});
+      return Response.json(
+        { error: "Le nom associé à la carte doit correspondre au nom légal du compte." },
+        { status: 409 }
+      );
+    }
     const { error } = await admin.from("payment_settings").upsert(
       {
         user_id: auth.user.id,

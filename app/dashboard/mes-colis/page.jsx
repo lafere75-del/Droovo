@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Package, Truck, MapPin, Calendar } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
+import { isRouteCompatible } from "../../../lib/droovoUi";
 
 export default function MesColisPage() {
   const [packages, setPackages] = useState([]);
@@ -45,16 +46,7 @@ export default function MesColisPage() {
   }
 
   function getCompatibleTrips(pkg) {
-    return trips.filter((trip) => {
-      return (
-        trip.departure_city?.toLowerCase().trim() ===
-          pkg.departure_city?.toLowerCase().trim() &&
-        trip.arrival_city?.toLowerCase().trim() ===
-          pkg.arrival_city?.toLowerCase().trim() &&
-        trip.trip_date === pkg.desired_date &&
-        Number(trip.available_weight) >= Number(pkg.weight)
-      );
-    });
+    return trips.filter((trip) => isRouteCompatible(trip, pkg));
   }
 
   async function handleBookTrip(pkg, trip) {

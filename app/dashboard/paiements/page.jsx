@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import EmbeddedCardSetup from "../../../components/EmbeddedCardSetup";
 import EmbeddedConnectOnboarding from "../../../components/EmbeddedConnectOnboarding";
+import StripeBankAuthentication from "../../../components/StripeBankAuthentication";
 
 export default function PaiementsPage() {
   const [senderBookings, setSenderBookings] = useState([]);
@@ -13,6 +14,8 @@ export default function PaiementsPage() {
   const [stripeLoading, setStripeLoading] = useState(false);
   const [cardSetup, setCardSetup] = useState(null);
   const [connectSetup, setConnectSetup] = useState(null);
+  const [connectStatus, setConnectStatus] = useState("not_started");
+  const [bankAction, setBankAction] = useState(null);
 
   const [cardNumber, setCardNumber] = useState("");
   const [cardSaved, setCardSaved] = useState(false);
@@ -26,17 +29,11 @@ export default function PaiementsPage() {
   useEffect(() => {
     async function syncStripeReturn() {
       const params = new URLSearchParams(window.location.search);
-      const sessionId = params.get("session_id");
-      if (!sessionId) return;
+      const setupIntentId = params.get("setup_intent");
+      if (!setupIntentId) return;
 
       try {
-        if (params.get("setup") === "success") {
-          await callStripe("/api/stripe/setup/sync", { sessionId });
-        } else if (params.get("payment") === "success") {
-          await callStripe("/api/stripe/sync", { sessionId });
-        } else {
-          return;
-        }
+        await callStripe("/api/stripe/setup/sync", { setupIntentId });
         await loadPayments();
         window.history.replaceState({}, "", "/dashboard/paiements");
       } catch (error) {
@@ -80,7 +77,8 @@ export default function PaiementsPage() {
       .select(`
         *,
         packages (*),
-        trips (*)
+        trips (*),
+        payments (payment_status)
       `)
       .eq("sender_id", user.id)
       .order("created_at", { ascending: false });
@@ -97,6 +95,16 @@ export default function PaiementsPage() {
 
     setSenderBookings(senderData || []);
     setDriverBookings(driverData || []);
+    if (paymentData?.stripe_connect_account_id) {
+      try {
+        const result = await callStripe("/api/stripe/connect/status");
+        setConnectStatus(result.status);
+      } catch {
+        setConnectStatus(paymentData.connect_onboarding_status || "pending");
+      }
+    } else {
+      setConnectStatus("not_started");
+    }
     setLoading(false);
   }
 
@@ -156,6 +164,24 @@ export default function PaiementsPage() {
 
   async function finishConnectSetup() {
     setConnectSetup(null);
+    await loadPayments();
+  }
+
+  async function startBankAuthentication(bookingId) {
+    setStripeLoading(true);
+    try {
+      const setup = await callStripe("/api/stripe/authorize/action", { bookingId });
+      setBankAction({ bookingId, ...setup });
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setStripeLoading(false);
+    }
+  }
+
+  async function finishBankAuthentication() {
+    await callStripe("/api/stripe/authorize/sync", { bookingId: bankAction.bookingId });
+    setBankAction(null);
     await loadPayments();
   }
 
@@ -233,12 +259,14 @@ export default function PaiementsPage() {
               En enregistrant une carte, vous autorisez Droovo à préautoriser le
               prix lorsque vous choisissez un transporteur, puis à le débiter
               uniquement après validation de la livraison. Les données bancaires
-              restent chez Stripe.
+              restent chez Stripe. Aucun paiement n’est possible avant validation
+              de votre identité.
             </p>
             {cardSetup ? (
               <EmbeddedCardSetup
                 clientSecret={cardSetup.clientSecret}
                 publishableKey={cardSetup.publishableKey}
+                cardholderName={cardSetup.cardholderName}
                 syncSetup={syncCardSetup}
                 onSaved={finishCardSetup}
                 onCancel={() => setCardSetup(null)}
@@ -264,15 +292,23 @@ export default function PaiementsPage() {
             </h2>
 
             <p className="mt-2 text-slate-600">
-              Renseignez votre identité et votre RIB sans quitter Droovo. Les
-              champs bancaires sécurisés sont gérés par Stripe Connect.
+              Renseignez votre RIB sans quitter Droovo. Le titulaire doit être le
+              même que celui de la pièce d’identité validée.
             </p>
 
             <div className="mt-6 rounded-2xl bg-slate-50 p-5">
               <p className="font-black text-slate-900">
-                {paymentSettings?.stripe_connect_account_id
-                  ? "Compte transporteur créé"
-                  : "Versements non configurés"}
+                {connectStatus === "active"
+                  ? "Compte vérifié — versements activés"
+                  : connectStatus === "identity_pending"
+                    ? "RIB enregistré — identité à valider"
+                  : connectStatus === "identity_mismatch"
+                    ? "Identité bancaire à corriger"
+                  : connectStatus === "restricted"
+                    ? "Informations complémentaires requises"
+                    : connectStatus === "pending"
+                      ? "Vérification Stripe en cours"
+                      : "Versements non configurés"}
               </p>
               <p className="mt-1 text-sm text-slate-500">
                 Stripe recueille directement votre identité et votre IBAN. Droovo
@@ -313,6 +349,11 @@ export default function PaiementsPage() {
                 key={booking.id}
                 booking={booking}
                 mode="sender"
+                stripeLoading={stripeLoading}
+                onBankAuthentication={startBankAuthentication}
+                bankAction={bankAction}
+                onBankConfirmed={finishBankAuthentication}
+                onBankCancel={() => setBankAction(null)}
               />
             ))}
           </div>
@@ -342,12 +383,15 @@ export default function PaiementsPage() {
   );
 }
 
-function PaymentCard({ booking, mode }) {
+function PaymentCard({ booking, mode, stripeLoading, onBankAuthentication, bankAction, onBankConfirmed, onBankCancel }) {
   const price = Number(booking.packages?.price || 0);
   const platformFee = Number(booking.platform_fee || price * 0.25).toFixed(2);
   const driverAmount = Number(
     booking.driver_amount || price - platformFee
   ).toFixed(2);
+
+  const relatedPayment = Array.isArray(booking.payments) ? booking.payments[0] : booking.payments;
+  const effectivePaymentStatus = relatedPayment?.payment_status || booking.payment_status;
 
   return (
     <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-emerald-100">
@@ -363,20 +407,14 @@ function PaymentCard({ booking, mode }) {
           </p>
 
           <p className="mt-2 text-slate-500">
-            Prix client : {price.toFixed(2)} €
-          </p>
-
-          <p className="mt-2 text-slate-500">
-            Commission Droovo : {platformFee} €
-          </p>
-
-          <p className="mt-2 text-slate-500">
-            Gain transporteur estimé : {driverAmount} €
+            {mode === "driver"
+              ? `Gain transporteur estimé : ${driverAmount} €`
+              : `Prix à payer : ${price.toFixed(2)} €`}
           </p>
         </div>
 
         <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-700">
-          {paymentStatusLabel(booking.payment_status)}
+          {paymentStatusLabel(effectivePaymentStatus)}
         </span>
       </div>
 
@@ -390,7 +428,26 @@ function PaymentCard({ booking, mode }) {
 
       </div>
 
-      {mode === "sender" && booking.payment_status === "authorized" && (
+      {mode === "sender" && effectivePaymentStatus === "requires_action" && (
+        bankAction?.bookingId === booking.id ? (
+          <StripeBankAuthentication
+            clientSecret={bankAction.clientSecret}
+            publishableKey={bankAction.publishableKey}
+            onConfirmed={onBankConfirmed}
+            onCancel={onBankCancel}
+          />
+        ) : (
+          <button
+            onClick={() => onBankAuthentication(booking.id)}
+            disabled={stripeLoading}
+            className="mt-6 rounded-full bg-amber-500 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
+          >
+            {stripeLoading ? "Chargement…" : "Valider avec ma banque"}
+          </button>
+        )
+      )}
+
+      {mode === "sender" && effectivePaymentStatus === "authorized" && (
         <p className="mt-6 rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
           Montant préautorisé. Votre carte sera débitée uniquement lorsque vous
           confirmerez la livraison.
@@ -410,6 +467,7 @@ function PaymentCard({ booking, mode }) {
 function paymentStatusLabel(status) {
   return {
     pending: "En attente",
+    requires_action: "Validation bancaire requise",
     authorized: "Préautorisé",
     paid: "Payé",
   }[status] || status || "En attente";

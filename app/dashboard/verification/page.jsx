@@ -29,7 +29,6 @@ export default function VerificationPage() {
   const [idFront, setIdFront] = useState(null);
   const [idBack, setIdBack] = useState(null);
   const [selfie, setSelfie] = useState(null);
-  const [rib, setRib] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null);
@@ -116,11 +115,6 @@ export default function VerificationPage() {
         `${user.id}/selfie-${timestamp}`
       );
 
-      const ribPath = await uploadFile(
-        rib,
-        `${user.id}/rib-${timestamp}`
-      );
-
       const { error } = await supabase
         .from("identity_verifications")
         .insert({
@@ -129,7 +123,6 @@ export default function VerificationPage() {
           id_front_url: idFrontPath,
           id_back_url: idBackPath,
           selfie_url: selfiePath,
-          rib_url: ribPath,
           status: "pending",
         });
 
@@ -176,6 +169,7 @@ export default function VerificationPage() {
 
         <p className="mt-3 text-slate-600">
           Ajoutez vos documents pour débloquer toutes les fonctionnalités Droovo.
+          Votre carte et votre RIB seront ensuite associés à cette identité vérifiée.
         </p>
 
         {verificationStatus === "pending" && (
@@ -209,17 +203,17 @@ export default function VerificationPage() {
 
             <FileInput
               label="Carte d’identité recto"
+              capture="environment"
               onChange={setIdFront}
             />
 
             <FileInput
               label="Carte d’identité verso"
+              capture="environment"
               onChange={setIdBack}
             />
 
-            <SelfieInput label="Selfie" onChange={setSelfie} />
-
-            <FileInput label="RIB au même nom" onChange={setRib} />
+            <SelfieInput label="Selfie" capture="user" onChange={setSelfie} />
 
             <button
               type="submit"
@@ -239,7 +233,7 @@ export default function VerificationPage() {
   );
 }
 
-function FileInput({ label, onChange }) {
+function FileInput({ label, capture, onChange }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-black text-slate-700">
@@ -247,6 +241,7 @@ function FileInput({ label, onChange }) {
       </label>
 
       <input
+        capture={capture}
         required
         type="file"
         accept="image/*,.pdf"
@@ -257,7 +252,7 @@ function FileInput({ label, onChange }) {
   );
 }
 
-function SelfieInput({ label, onChange }) {
+function SelfieInput({ label, capture, onChange }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-black text-slate-700">
@@ -265,6 +260,7 @@ function SelfieInput({ label, onChange }) {
       </label>
 
       <input
+        capture={capture}
         required
         type="file"
         accept="image/*"
