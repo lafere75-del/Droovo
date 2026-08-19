@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { getAuthRedirectUrl } from "../../lib/mobileClient";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -25,7 +26,10 @@ export default function SignupPage() {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
-        options: { data: { fullname: fullname.trim() } },
+        options: {
+          data: { fullname: fullname.trim() },
+          emailRedirectTo: getAuthRedirectUrl("/login"),
+        },
       });
 
       if (error) {
@@ -44,7 +48,7 @@ export default function SignupPage() {
         await supabase.from("profiles").update({ fullname: fullname.trim() }).eq("id", userId);
         router.push("/dashboard/paiements?setup=required");
       } else {
-        alert("Compte créé. Confirmez votre e-mail, puis enregistrez votre carte dans l’espace sécurisé Stripe.");
+        alert("Compte créé. Confirmez votre e-mail, puis vous pourrez enregistrer vos coordonnées bancaires et transmettre vos justificatifs.");
         router.push("/login");
       }
     } finally {
@@ -64,8 +68,8 @@ export default function SignupPage() {
         </h1>
 
         <p className="mt-3 text-slate-600">
-          Créez votre compte Droovo. Après validation de l’e-mail, Stripe vous
-          demandera d’enregistrer un moyen de paiement sécurisé.
+          Créez votre compte Droovo. Après validation de l’e-mail, vous pourrez
+          enregistrer vos coordonnées bancaires puis faire vérifier votre identité.
         </p>
 
         <form onSubmit={handleSignup} className="mt-8 grid gap-4">

@@ -175,7 +175,6 @@ export default function AdminPage() {
       { label: "Carte identité recto", path: cleanPath(data.id_front_url) },
       { label: "Carte identité verso", path: cleanPath(data.id_back_url) },
       { label: "Selfie", path: cleanPath(data.selfie_url) },
-      { label: "RIB", path: cleanPath(data.rib_url) },
     ].filter((file) => file.path);
 
     const blocks = [];
@@ -216,19 +215,35 @@ export default function AdminPage() {
   }
 
   async function validateProfile(userId) {
-    await supabase
+    const { error: profileError } = await supabase
       .from("profiles")
       .update({ identity_status: "verified" })
       .eq("id", userId);
+    if (profileError) return alert(profileError.message);
+
+    const { error: verificationError } = await supabase
+      .from("identity_verifications")
+      .update({ status: "verified" })
+      .eq("user_id", userId)
+      .eq("status", "pending");
+    if (verificationError) return alert(verificationError.message);
 
     await loadAdminData();
   }
 
   async function rejectProfile(userId) {
-    await supabase
+    const { error: profileError } = await supabase
       .from("profiles")
       .update({ identity_status: "rejected" })
       .eq("id", userId);
+    if (profileError) return alert(profileError.message);
+
+    const { error: verificationError } = await supabase
+      .from("identity_verifications")
+      .update({ status: "rejected" })
+      .eq("user_id", userId)
+      .eq("status", "pending");
+    if (verificationError) return alert(verificationError.message);
 
     await loadAdminData();
   }

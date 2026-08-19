@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
+import { isRouteCompatible } from "../../../lib/droovoUi";
 
 export default function MesTrajetsPage() {
   const [trips, setTrips] = useState([]);
@@ -46,16 +47,7 @@ export default function MesTrajetsPage() {
   }
 
   function getCompatiblePackages(trip) {
-    return packages.filter((pkg) => {
-      return (
-        trip.departure_city?.toLowerCase().trim() ===
-          pkg.departure_city?.toLowerCase().trim() &&
-        trip.arrival_city?.toLowerCase().trim() ===
-          pkg.arrival_city?.toLowerCase().trim() &&
-        trip.trip_date === pkg.desired_date &&
-        Number(trip.available_weight) >= Number(pkg.weight)
-      );
-    });
+    return packages.filter((pkg) => isRouteCompatible(trip, pkg));
   }
 
   async function handleAcceptTransport(pkg, trip) {

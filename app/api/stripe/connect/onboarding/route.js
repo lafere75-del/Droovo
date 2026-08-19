@@ -11,9 +11,15 @@ export async function POST(request) {
     const admin = getSupabaseAdmin();
     const { data: profile } = await auth.client
       .from("profiles")
-      .select("fullname,first_name,last_name,email")
+      .select("fullname,first_name,last_name,email,identity_status")
       .eq("id", auth.user.id)
       .maybeSingle();
+    if (!profile?.fullname?.trim()) {
+      return Response.json(
+        { error: "Indiquez votre nom légal avant de configurer les versements." },
+        { status: 400 }
+      );
+    }
     const { data: settings } = await auth.client
       .from("payment_settings")
       .select("stripe_connect_account_id")
@@ -22,10 +28,21 @@ export async function POST(request) {
 
     let accountId = settings?.stripe_connect_account_id;
     if (!accountId) {
+      const nameParts = profile.fullname.trim().split(/\s+/);
+      const givenName = profile.first_name || nameParts[0];
+      const surname = profile.last_name || nameParts.slice(1).join(" ") || nameParts[0];
       const account = await stripe.v2.core.accounts.create({
         contact_email: auth.user.email,
         display_name: profile?.fullname || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Transporteur Droovo",
-        identity: { country: "fr", entity_type: "individual" },
+        identity: {
+          country: "fr",
+          entity_type: "individual",
+          individual: {
+            given_name: givenName,
+            surname,
+            email: auth.user.email,
+          },
+        },
         dashboard: "express",
         defaults: {
           responsibilities: {

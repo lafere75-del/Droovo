@@ -9,6 +9,17 @@ export async function POST(request) {
   try {
     const stripe = getStripe();
     const admin = getSupabaseAdmin();
+    const { data: profile } = await auth.client
+      .from("profiles")
+      .select("fullname,identity_status")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+    if (!profile?.fullname?.trim()) {
+      return Response.json(
+        { error: "Indiquez votre nom légal avant d’enregistrer une carte." },
+        { status: 400 }
+      );
+    }
     const { data: settings } = await admin
       .from("payment_settings")
       .select("stripe_customer_id")
@@ -44,6 +55,7 @@ export async function POST(request) {
     return Response.json({
       clientSecret: setupIntent.client_secret,
       publishableKey,
+      cardholderName: profile.fullname.trim(),
     });
   } catch (error) {
     return stripeError(error);

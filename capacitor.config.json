@@ -1,0 +1,30 @@
+{
+  "appId": "fr.droovo.app",
+  "appName": "Droovo",
+  "webDir": "mobile-shell",
+  "server": {
+    "url": "https://droovo.fr",
+    "cleartext": false,
+    "androidScheme": "https",
+    "allowNavigation": [
+      "droovo.fr",
+      "www.droovo.fr",
+      "ftejnioyumhoqnnrrbzr.supabase.co",
+      "*.stripe.com"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#F4F7F5",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#FFFFFF"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "banner", "list"]
+    }
+  }
+}

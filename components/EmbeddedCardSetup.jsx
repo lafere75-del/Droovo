@@ -4,7 +4,7 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 import { loadStripe } from "@stripe/stripe-js";
 import { useMemo, useState } from "react";
 
-function CardForm({ onCancel, onSaved, syncSetup }) {
+function CardForm({ cardholderName, onCancel, onSaved, syncSetup }) {
   const stripe = useStripe();
   const elements = useElements();
   const [saving, setSaving] = useState(false);
@@ -21,6 +21,9 @@ function CardForm({ onCancel, onSaved, syncSetup }) {
       redirect: "if_required",
       confirmParams: {
         return_url: `${window.location.origin}/dashboard/paiements`,
+        payment_method_data: {
+          billing_details: { name: cardholderName },
+        },
       },
     });
 
@@ -66,7 +69,7 @@ function CardForm({ onCancel, onSaved, syncSetup }) {
   );
 }
 
-export default function EmbeddedCardSetup({ clientSecret, publishableKey, onCancel, onSaved, syncSetup }) {
+export default function EmbeddedCardSetup({ clientSecret, publishableKey, cardholderName, onCancel, onSaved, syncSetup }) {
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
 
   return (
@@ -85,7 +88,7 @@ export default function EmbeddedCardSetup({ clientSecret, publishableKey, onCanc
         },
       }}
     >
-      <CardForm onCancel={onCancel} onSaved={onSaved} syncSetup={syncSetup} />
+      <CardForm cardholderName={cardholderName} onCancel={onCancel} onSaved={onSaved} syncSetup={syncSetup} />
     </Elements>
   );
 }

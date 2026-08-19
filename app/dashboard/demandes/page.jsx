@@ -73,6 +73,15 @@ export default function DemandesPage() {
         if (!response.ok) {
           throw new Error(result.error || "Préautorisation impossible.");
         }
+        if (result.senderActionRequired) {
+          if (booking.sender_id === session?.user?.id) {
+            window.location.assign(`/dashboard/paiements?booking=${booking.id}&action=required`);
+            return;
+          }
+          alert("Demande enregistrée. L’expéditeur doit effectuer une validation ponctuelle demandée par sa banque avant l’acceptation définitive.");
+          await loadRequests();
+          return;
+        }
       } else {
         const { error } = await supabase
           .from("bookings")

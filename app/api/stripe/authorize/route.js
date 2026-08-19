@@ -1,6 +1,7 @@
 import { requireApiUser } from "../../../../lib/apiAuth";
 import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getStripe, stripeError } from "../../../../lib/stripeServer";
+import { legalNamesMatch } from "../../../../lib/identityName";
 
 export async function POST(request) {
   const auth = await requireApiUser(request);
@@ -43,12 +44,31 @@ export async function POST(request) {
       );
     }
 
+    const { data: senderProfile } = await admin.from("profiles")
+      .select("fullname,identity_status")
+      .eq("id", booking.sender_id)
+      .maybeSingle();
+    if (senderProfile?.identity_status !== "verified") {
+      return Response.json(
+        { error: "L’identité de l’expéditeur doit être validée avant toute préautorisation." },
+        { status: 409 }
+      );
+    }
+
+    const stripe = getStripe();
+    const savedPaymentMethod = await stripe.paymentMethods.retrieve(settings.stripe_payment_method_id);
+    if (!legalNamesMatch(savedPaymentMethod.billing_details?.name, senderProfile.fullname)) {
+      return Response.json(
+        { error: "Le titulaire de la carte ne correspond pas à l’identité vérifiée." },
+        { status: 409 }
+      );
+    }
+
     const amountCents = Math.round(Number(booking.packages?.price || 0) * 100);
     if (!Number.isInteger(amountCents) || amountCents < 50) {
       return Response.json({ error: "Montant invalide." }, { status: 400 });
     }
     const commissionCents = Math.round(amountCents * 0.25);
-    const stripe = getStripe();
     const intent = await stripe.paymentIntents.create(
       {
         amount: amountCents,
@@ -56,7 +76,7 @@ export async function POST(request) {
         customer: settings.stripe_customer_id,
         payment_method: settings.stripe_payment_method_id,
         confirm: true,
-        off_session: true,
+        off_session: false,
         capture_method: "manual",
         description: `Transport Droovo — ${booking.packages?.title || "Colis"}`,
         metadata: {
@@ -69,7 +89,7 @@ export async function POST(request) {
       { idempotencyKey: `authorize-${booking.id}` }
     );
 
-    if (intent.status !== "requires_capture") {
+    if (!["requires_capture", "requires_action"].includes(intent.status)) {
       return Response.json(
         { error: "La banque n’a pas confirmé la préautorisation. L’expéditeur doit vérifier son moyen de paiement." },
         { status: 409 }
@@ -88,7 +108,7 @@ export async function POST(request) {
         amount_cents: amountCents,
         commission_cents: commissionCents,
         currency: "eur",
-        payment_status: "authorized",
+        payment_status: intent.status === "requires_capture" ? "authorized" : "requires_action",
         payout_status: "blocked_until_delivery",
         stripe_payment_id: intent.id,
       },
@@ -96,14 +116,19 @@ export async function POST(request) {
     );
     if (saveError) throw saveError;
 
-    const { error: rpcError } = await admin.rpc("stripe_mark_booking_authorized", {
-      p_booking_id: booking.id,
-      p_platform_fee: commissionCents / 100,
-      p_driver_amount: (amountCents - commissionCents) / 100,
-    });
-    if (rpcError) throw rpcError;
+    if (intent.status === "requires_capture") {
+      const { error: rpcError } = await admin.rpc("stripe_mark_booking_authorized", {
+        p_booking_id: booking.id,
+        p_platform_fee: commissionCents / 100,
+        p_driver_amount: (amountCents - commissionCents) / 100,
+      });
+      if (rpcError) throw rpcError;
+    }
 
-    return Response.json({ status: "authorized" });
+    return Response.json({
+      status: intent.status === "requires_capture" ? "authorized" : "requires_action",
+      senderActionRequired: intent.status === "requires_action",
+    });
   } catch (error) {
     if (error?.code === "authentication_required" || error?.code === "card_declined") {
       return Response.json(

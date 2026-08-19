@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
+import { formatDeliveryStatus } from "../../../lib/droovoUi";
 
 export default function SuivisPage() {
   const [bookings, setBookings] = useState([]);
@@ -105,7 +106,7 @@ export default function SuivisPage() {
                 </div>
 
                 <div className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-700">
-                  {formatStatus(
+                  {formatDeliveryStatus(
                     booking.tracking_status || "booking_created"
                   )}
                 </div>
@@ -135,19 +136,4 @@ export default function SuivisPage() {
       </div>
     </main>
   );
-}
-
-function formatStatus(status) {
-  const labels = {
-    booking_created: "Demande créée",
-    accepted: "Acceptée",
-    paid: "Payée",
-    picked_up: "Colis récupéré",
-    in_transit: "En cours de livraison",
-    delivered: "Livré",
-    cancelled: "Annulé",
-    dispute: "Litige",
-  };
-
-  return labels[status] || status;
 }

@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { ChevronRight, CircleHelp, CreditCard, Landmark, ShieldCheck, UserRound } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 
 export default function ProfilPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const [profile, setProfile] = useState({
     first_name: "",
@@ -129,6 +131,33 @@ export default function ProfilPage() {
     }));
   }
 
+  async function deleteAccount() {
+    const confirmation = window.prompt(
+      "Cette action est définitive. Tapez SUPPRIMER pour confirmer."
+    );
+    if (confirmation !== "SUPPRIMER") return;
+
+    setDeletingAccount(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token || ""}`,
+        },
+        body: JSON.stringify({ confirmation }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Suppression impossible.");
+      await supabase.auth.signOut();
+      window.location.assign("/");
+    } catch (error) {
+      alert(error.message);
+      setDeletingAccount(false);
+    }
+  }
+
   const fullName =
     profile.first_name || profile.last_name
       ? `${profile.first_name} ${profile.last_name}`.trim()
@@ -171,14 +200,18 @@ export default function ProfilPage() {
   return (
     <main className="min-h-screen bg-[#f6f7fb] px-4 py-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <Link
-            href="/dashboard"
-            className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
-          >
-            ← Retour au dashboard
-          </Link>
-
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-emerald-700">
+              Mon espace
+            </p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Profil et préférences
+            </h1>
+            <p className="mt-2 text-slate-600">
+              Gérez vos informations, vos paiements et votre sécurité.
+            </p>
+          </div>
           <button
             onClick={() => (isEditing ? saveProfile() : setIsEditing(true))}
             className="rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white hover:opacity-90"
@@ -243,6 +276,14 @@ export default function ProfilPage() {
           </div>
         </section>
 
+        <section className="overflow-hidden rounded-[32px] bg-white px-5 shadow-sm ring-1 ring-emerald-100 md:px-8">
+          <ProfileShortcut icon={UserRound} title="Informations personnelles" text="Nom, téléphone et adresses" href="#informations-personnelles" />
+          <ProfileShortcut icon={CreditCard} title="Paiements" text="Carte enregistrée et autorisations" href="/dashboard/paiements" />
+          <ProfileShortcut icon={Landmark} title="Versements transporteur" text="Compte bancaire et gains" href="/dashboard/paiements" />
+          <ProfileShortcut icon={ShieldCheck} title="Identité et sécurité" text="Vérification du compte" href="/dashboard/verification" />
+          <ProfileShortcut icon={CircleHelp} title="Aide et règles Droovo" text="Support, objets interdits et conditions" href="/support" />
+        </section>
+
         <section className="grid gap-4 md:grid-cols-3">
           <InfoCard
             title="Profil complété"
@@ -263,7 +304,7 @@ export default function ProfilPage() {
           />
         </section>
 
-        <section className="rounded-[32px] bg-white p-6 shadow-sm md:p-8">
+        <section id="informations-personnelles" className="scroll-mt-28 rounded-[32px] bg-white p-6 shadow-sm md:p-8">
           <h2 className="text-2xl font-bold text-gray-950">
             Informations personnelles
           </h2>
@@ -351,6 +392,21 @@ export default function ProfilPage() {
             </div>
           </div>
         </section>
+
+        <section className="rounded-[32px] bg-white p-6 shadow-sm ring-1 ring-red-100 md:p-8">
+          <h2 className="text-2xl font-bold text-gray-950">Supprimer mon compte</h2>
+          <p className="mt-2 text-sm leading-6 text-gray-500">
+            Vos données personnelles seront supprimées, sauf celles que Droovo doit
+            conserver pour respecter ses obligations légales. Cette action est définitive.
+          </p>
+          <button
+            onClick={deleteAccount}
+            disabled={deletingAccount}
+            className="mt-5 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {deletingAccount ? "Suppression…" : "Supprimer définitivement mon compte"}
+          </button>
+        </section>
       </div>
     </main>
   );
@@ -363,6 +419,24 @@ function InfoCard({ title, value, description }) {
       <p className="mt-2 text-2xl font-bold text-gray-950">{value}</p>
       <p className="mt-2 text-sm text-gray-500">{description}</p>
     </div>
+  );
+}
+
+function ProfileShortcut({ icon: Icon, title, text, href }) {
+  return (
+    <Link
+      href={href}
+      className="grid grid-cols-[44px_1fr_auto] items-center gap-3 border-b border-emerald-100 py-5 last:border-b-0 hover:text-emerald-800"
+    >
+      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+        <Icon size={20} />
+      </span>
+      <span>
+        <strong className="block font-black text-slate-950">{title}</strong>
+        <span className="mt-1 block text-sm text-slate-500">{text}</span>
+      </span>
+      <ChevronRight size={18} className="text-slate-400" />
+    </Link>
   );
 }
 
